@@ -1,0 +1,4 @@
+*.env
+node_modules
+resume-app-frontend/resume-app/.env
+resume-app-frontend/.DS_Store
