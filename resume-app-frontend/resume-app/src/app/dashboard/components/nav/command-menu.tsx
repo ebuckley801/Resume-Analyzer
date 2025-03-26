@@ -80,17 +80,6 @@ export function CommandMenu(props: React.JSX.IntrinsicAttributes & ButtonProps &
                 <CommandInput placeholder="Type a command or search..." />
                 <CommandList>
                     <CommandEmpty>No results found.</CommandEmpty>
-                    <CommandGroup heading="AI Assistant">
-                        <Link href={'/dashboard/recipe-assistant'}>
-                        <CommandItem>
-                            <MessageCircle className="mr-2 h-4 w-4" />
-                            <span>Chat with AI</span>
-                            <CommandShortcut>⌘C</CommandShortcut>
-                        </CommandItem>
-                        </Link>
-                    </CommandGroup>
-
-
                     <CommandGroup heading="Settings">
                         <Link href={'/dashboard/settings/profile'}>
                         <CommandItem>
@@ -100,13 +89,11 @@ export function CommandMenu(props: React.JSX.IntrinsicAttributes & ButtonProps &
                         </CommandItem>
                         </Link>
 
-
                         <Link href={'/dashboard/settings/account'}>
-                       <CommandItem>
+                        <CommandItem>
                             <Settings className="mr-2 h-4 w-4" />
                             <span>Settings</span>
                             <CommandShortcut>⌘S</CommandShortcut>
-
                         </CommandItem>
                         </Link>
                     </CommandGroup>

@@ -11,74 +11,64 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now()) @map("created_at")
-  uploads   Upload[]
-  analyses  ResumeAnalysis[]
-  jobs      JobAnalysis[]
-  feedback  Feedback[]
+  id                String    @id @default(uuid())
+  email             String    @unique
+  passwordHash      String    @map("password_hash")
+  firstName         String    @map("first_name")
+  lastName          String    @map("last_name")
+  isActive          Boolean   @default(true) @map("is_active")
+  isAdmin           Boolean   @default(false) @map("is_admin")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  lastLogin         DateTime? @map("last_login")
+  resetToken        String?   @map("reset_token")
+  resetTokenExpires DateTime? @map("reset_token_expires")
+  uploads           Upload[]
+  analysisResults   AnalysisResult[]
 
   @@map("users")
 }
 
 model Upload {
-  id          Int      @id @default(autoincrement())
-  userId      Int?     @map("user_id")
-  fileId      String   @unique @default(uuid()) @map("file_id")
-  fileName    String   @map("file_name")
-  fileType    String   @map("file_type")
-  uploadTime  DateTime @default(now()) @map("upload_time")
-  user        User?    @relation(fields: [userId], references: [id])
-  analysis    ResumeAnalysis?
-  feedback    Feedback?
+  id            String    @id @default(uuid())
+  filename      String    @map("filename")
+  processedText String    @map("processed_text")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  userId        String    @map("user_id")
+  user          User      @relation(fields: [userId], references: [id])
+  analysisResults AnalysisResult[]
 
   @@map("uploads")
 }
 
-model ResumeAnalysis {
-  id            Int      @id @default(autoincrement())
-  userId        Int?     @map("user_id")
-  fileId        String   @unique @map("file_id")
-  skills        String
-  experience    String
-  education     String
-  processedTime DateTime @default(now()) @map("processed_time")
-  user          User?    @relation(fields: [userId], references: [id])
-  upload        Upload   @relation(fields: [fileId], references: [fileId])
+model JobDescription {
+  id            String    @id @default(uuid())
+  rawText       String    @map("raw_text")
+  analysisData  String    @map("analysis_data") // JSON string
+  contentHash   String    @unique @map("content_hash")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  analysisResults AnalysisResult[]
 
-  @@map("resume_analysis")
+  @@map("job_descriptions")
 }
 
-model JobAnalysis {
-  id              Int      @id @default(autoincrement())
-  userId          Int?     @map("user_id")
-  jobId           String   @unique @default(uuid()) @map("job_id")
-  requiredSkills  String   @map("required_skills")
-  preferredSkills String   @map("preferred_skills")
-  industryType    String   @map("industry_type")
-  processedTime   DateTime @default(now()) @map("processed_time")
-  user            User?    @relation(fields: [userId], references: [id])
-  feedback        Feedback?
+model AnalysisResult {
+  id                  String    @id @default(uuid())
+  analysisData        String    @map("analysis_data") // JSON string
+  resumeText          String    @map("resume_text")
+  jobDescriptionText  String    @map("job_description_text")
+  score               Float     // Score between 0 and 1
+  industry            String?
+  analysisVersion     String    @map("analysis_version")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  userId              String    @map("user_id")
+  uploadId            String    @map("upload_id")
+  jobDescriptionId    String    @map("job_description_id")
+  user                User      @relation(fields: [userId], references: [id])
+  upload              Upload    @relation(fields: [uploadId], references: [id])
+  jobDescription      JobDescription @relation(fields: [jobDescriptionId], references: [id])
 
-  @@map("job_analysis")
-}
-
-model Feedback {
-  id              Int      @id @default(autoincrement())
-  userId          Int?     @map("user_id")
-  fileId          String   @unique @map("file_id")
-  jobId           String   @unique @map("job_id")
-  matchScore      Int      @map("match_score")
-  missingSkills   String   @map("missing_skills")
-  improvementTips String   @map("improvement_tips")
-  processedTime   DateTime @default(now()) @map("processed_time")
-  user            User?    @relation(fields: [userId], references: [id])
-  upload          Upload   @relation(fields: [fileId], references: [fileId])
-  jobAnalysis     JobAnalysis @relation(fields: [jobId], references: [jobId])
-
-  @@map("feedback")
+  @@map("analysis_results")
 }
 
 
