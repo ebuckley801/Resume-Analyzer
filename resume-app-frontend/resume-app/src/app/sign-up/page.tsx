@@ -1,51 +1,269 @@
-import Link from "next/link";
-import SignUp from "./SignUp";
-import { ModeToggle } from "@/components/ui/theme-toggle";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../lib/authOptions";
-import { redirect } from "next/navigation";
+'use client'
 
-export default async function Home() {
-  const session = getServerSession(authOptions);
-  if (await session) {
-    redirect('/dashboard');
-  }
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, Eye, EyeOff, AlertCircle } from "lucide-react";
+import Link from 'next/link';
+import { signIn } from 'next-auth/react';
+import { PasswordStrength } from "@/components/ui/password-strength";
+import { PasswordRequirements } from "@/components/ui/password-requirements";
 
+const passwordRequirements = [
+  { regex: /.{8,}/, label: "At least 8 characters" },
+  { regex: /[A-Z]/, label: "One uppercase letter" },
+  { regex: /[a-z]/, label: "One lowercase letter" },
+  { regex: /[0-9]/, label: "One number" },
+  { regex: /[^a-zA-Z0-9]/, label: "One special character" },
+];
+
+const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+export default function SignUp() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const validateEmail = (email: string) => {
+    if (!email) {
+      return 'Email is required';
+    }
+    if (!emailRegex.test(email)) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  };
+
+  const validatePassword = (password: string) => {
+    const failedRequirements = passwordRequirements
+      .filter(({ regex }) => !regex.test(password))
+      .map(({ label }) => label);
+
+    if (failedRequirements.length > 0) {
+      return `Password must meet the following requirements: ${failedRequirements.join(', ')}`;
+    }
+    return null;
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    setEmailError(validateEmail(newEmail));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    const formData = new FormData(e.currentTarget);
+    const firstName = formData.get('firstName') as string;
+    const lastName = formData.get('lastName') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
+
+    // Validate email
+    const emailValidationError = validateEmail(email);
+    if (emailValidationError) {
+      setEmailError(emailValidationError);
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate password requirements
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      setIsLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Register the user
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create account');
+      }
+
+      // Sign in the user after successful registration
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        throw new Error('Failed to sign in after registration');
+      }
+
+      router.push('/');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <main>
-      <div className="container relative h-screen flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
-        <div className="relative hidden h-full flex-col dark:bg-background p-10 text-white lg:flex dark:border-r">
-          <div className="absolute inset-0 bg-zinc-900" />
-          <div className="relative z-20 flex items-center text-lg font-medium">
-            <p className="text-4xl font-bold">Recipe App</p>
-          </div>
-          <div className="relative z-20 flex items-center mt-auto">
-          </div>
-        </div>
-
-        <div className="lg:p-8">
-          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-            <div className="absolute right-4 top-4 md:right-8 md:top-8">
-              <ModeToggle />
-            </div>
-            <div className="flex flex-col space-y-2 text-center">
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Sign Up
-              </h1>
-            </div>
-            <SignUp />
-            <p className="px-8 text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <Link
-                href="/"
-                className="underline underline-offset-4 hover:text-primary"
+    <main className="container mx-auto py-8 px-4">
+      <div className="flex justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">Create an Account</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    disabled={isLoading}
+                    value={email}
+                    onChange={handleEmailChange}
+                    className={emailError ? "border-red-500" : ""}
+                  />
+                  {emailError && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                    </div>
+                  )}
+                </div>
+                {emailError && (
+                  <p className="text-sm text-red-500">{emailError}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    disabled={isLoading}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-500" />
+                    )}
+                  </Button>
+                </div>
+                <PasswordStrength password={password} />
+                <PasswordRequirements password={password} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    disabled={isLoading}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-500" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
+              )}
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading || !password || !!validatePassword(password) || !!emailError}
               >
-                Sign In
-              </Link>
-            </p>
-          </div>
-        </div>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating account...
+                  </>
+                ) : (
+                  'Create Account'
+                )}
+              </Button>
+              <p className="text-sm text-center text-muted-foreground">
+                Already have an account?{' '}
+                <Link href="/sign-in" className="text-primary hover:underline">
+                  Sign in
+                </Link>
+              </p>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );

@@ -119,7 +119,8 @@ const config = {
           },
           { values: flattenColorPalette(theme("backgroundColor")), type: "color" }
       );
-    },],
+    },
+  ],
 } satisfies Config
 
 

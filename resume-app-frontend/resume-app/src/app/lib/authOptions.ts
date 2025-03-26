@@ -1,69 +1,76 @@
-import GoogleProvider from "next-auth/providers/google";
+import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcrypt";
-import prisma from "./prisma";
-import NextAuth, { NextAuthOptions } from "next-auth";
+import { PrismaClient } from "@prisma/client";
+import { compare } from "bcryptjs";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+
+const prisma = new PrismaClient();
 
 export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt",
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-  pages: {
-    signIn: "/",
-    signOut: "/",
-  },
+  adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
     CredentialsProvider({
+      name: "credentials",
       credentials: {
-        email: {},
-        password: {},
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Invalid credentials");
+        }
+
         const user = await prisma.user.findUnique({
           where: {
-            email: credentials?.email,
-          },
+            email: credentials.email
+          }
         });
 
-        if (!user) {
-          throw new Error("No user found");
+        if (!user || !user.passwordHash) {
+          throw new Error("Invalid credentials");
         }
 
-        const passwordCorrect = await compare(
-          credentials?.password || "",
-          user.password
+        const isPasswordValid = await compare(
+          credentials.password,
+          user.passwordHash
         );
 
-        if (passwordCorrect) {
-          return {
-            id: user.id + "",
-            email: user.email,
-            name: `${user.firstName} ${user.lastName}`,
-          };
+        if (!isPasswordValid) {
+          throw new Error("Invalid credentials");
         }
-        return null;
-      },
-    }),
+
+        // Update last login time
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date() }
+        });
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`,
+        };
+      }
+    })
   ],
+  session: {
+    strategy: "jwt"
+  },
+  pages: {
+    signIn: "/sign-in",
+  },
   callbacks: {
-    async session({ session, token }) {
-      session.user.id = token.id;
-      return session;
-    },
-    async jwt({ token, account, user }) {
-      if (account && user) {
-        token.accessToken = account.access_token;
+    async jwt({ token, user }) {
+      if (user) {
         token.id = user.id;
-        console.log({ user });
       }
       return token;
     },
-  },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    }
+  }
 };
-
-export default NextAuth(authOptions);
