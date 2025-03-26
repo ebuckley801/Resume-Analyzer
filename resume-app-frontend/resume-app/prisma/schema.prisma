@@ -1,184 +1,84 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id             String           @id @default(uuid())
-  firstName      String
-  lastName       String
-  email          String           @unique
-  password       String
-  conversations  Conversation[]
-  UserIngredient UserIngredient[]
-  MealPlan       MealPlan[]
-  UserPreference UserPreference[]
-  ShoppingList   ShoppingList[]
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now()) @map("created_at")
+  uploads   Upload[]
+  analyses  ResumeAnalysis[]
+  jobs      JobAnalysis[]
+  feedback  Feedback[]
+
+  @@map("users")
 }
 
-model Conversation {
-  id        String    @id @default(uuid())
-  title     String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  userId    String
-  user      User      @relation(fields: [userId], references: [id])
-  messages  Message[]
+model Upload {
+  id          Int      @id @default(autoincrement())
+  userId      Int?     @map("user_id")
+  fileId      String   @unique @default(uuid()) @map("file_id")
+  fileName    String   @map("file_name")
+  fileType    String   @map("file_type")
+  uploadTime  DateTime @default(now()) @map("upload_time")
+  user        User?    @relation(fields: [userId], references: [id])
+  analysis    ResumeAnalysis?
+  feedback    Feedback?
+
+  @@map("uploads")
 }
 
-model Message {
-  id             String       @id @default(uuid())
-  content        String
-  role           String
-  reasoning      String? // Optional reasoning field
-  chart          Json? // Optional chart field
-  createdAt      DateTime     @default(now())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+model ResumeAnalysis {
+  id            Int      @id @default(autoincrement())
+  userId        Int?     @map("user_id")
+  fileId        String   @unique @map("file_id")
+  skills        String
+  experience    String
+  education     String
+  processedTime DateTime @default(now()) @map("processed_time")
+  user          User?    @relation(fields: [userId], references: [id])
+  upload        Upload   @relation(fields: [fileId], references: [fileId])
+
+  @@map("resume_analysis")
 }
 
-model Ingredient {
-  id                String             @id @default(uuid())
-  name              String             @unique
-  unit              String // e.g., grams, liters, etc.
-  description       String?
-  calories          Float? // Added for nutritional analysis
-  protein           Float? // Added for nutritional analysis
-  carbs             Float? // Added for nutritional analysis
-  fats              Float? // Added for nutritional analysis
-  userIngredients   UserIngredient[]
-  recipeIngredients RecipeIngredient[]
-  shoppingListItems ShoppingListItem[] // Added for requirement #2
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+model JobAnalysis {
+  id              Int      @id @default(autoincrement())
+  userId          Int?     @map("user_id")
+  jobId           String   @unique @default(uuid()) @map("job_id")
+  requiredSkills  String   @map("required_skills")
+  preferredSkills String   @map("preferred_skills")
+  industryType    String   @map("industry_type")
+  processedTime   DateTime @default(now()) @map("processed_time")
+  user            User?    @relation(fields: [userId], references: [id])
+  feedback        Feedback?
+
+  @@map("job_analysis")
 }
 
-model UserIngredient {
-  id           String     @id @default(uuid())
-  userId       String
-  ingredientId String
-  quantity     Float
-  expiryDate   DateTime? // Added to track ingredient freshness
-  user         User       @relation(fields: [userId], references: [id])
-  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+model Feedback {
+  id              Int      @id @default(autoincrement())
+  userId          Int?     @map("user_id")
+  fileId          String   @unique @map("file_id")
+  jobId           String   @unique @map("job_id")
+  matchScore      Int      @map("match_score")
+  missingSkills   String   @map("missing_skills")
+  improvementTips String   @map("improvement_tips")
+  processedTime   DateTime @default(now()) @map("processed_time")
+  user            User?    @relation(fields: [userId], references: [id])
+  upload          Upload   @relation(fields: [fileId], references: [fileId])
+  jobAnalysis     JobAnalysis @relation(fields: [jobId], references: [jobId])
 
-  @@unique([userId, ingredientId])
+  @@map("feedback")
 }
 
-model Recipe {
-  id                String             @id @default(uuid())
-  name              String
-  description       String?
-  instructions      String // Steps for preparing the recipe
-  imageUrl          String? // Optional link to an image
-  preparationTime   Int // in minutes
-  cookingTime       Int // in minutes
-  servings          Int // number of servings
-  difficulty        String // easy, medium, hard
-  calories          Float? // per serving
-  protein           Float? // per serving
-  carbs             Float? // per serving
-  fats              Float? // per serving
-  recipeIngredients RecipeIngredient[]
-  mealPlanRecipes   MealPlanRecipe[]
-  tags              RecipeTag[] // Many-to-many for dietary restrictions
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-}
 
-model RecipeTag {
-  id        String   @id @default(uuid())
-  name      String   @unique // e.g., vegetarian, vegan, gluten-free
-  recipes   Recipe[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model RecipeIngredient {
-  id           String     @id @default(uuid())
-  recipeId     String
-  ingredientId String
-  quantity     Float
-  recipe       Recipe     @relation(fields: [recipeId], references: [id])
-  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  @@unique([recipeId, ingredientId])
-}
-
-model MealPlan {
-  id              String           @id @default(uuid())
-  userId          String
-  startDate       DateTime // Start date of the meal plan
-  endDate         DateTime // End date of the meal plan
-  totalCalories   Float? // Added for nutritional tracking
-  totalProtein    Float?
-  totalCarbs      Float?
-  totalFats       Float?
-  user            User             @relation(fields: [userId], references: [id])
-  mealPlanRecipes MealPlanRecipe[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-}
-
-model MealPlanRecipe {
-  id         String   @id @default(uuid())
-  mealPlanId String
-  recipeId   String
-  mealType   String // breakfast, lunch, dinner, snack
-  day        DateTime // Specific day this recipe is planned for
-  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id])
-  recipe     Recipe   @relation(fields: [recipeId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-}
-
-model UserPreference {
-  id                  String   @id @default(uuid())
-  userId              String   @unique
-  dietaryTags         String[] // Array of dietary preferences
-  excludedIngredients String[] // Ingredients to avoid
-  calorieGoal         Float? // daily calorie intake goal
-  proteinGoal         Float? // daily protein intake goal
-  carbsGoal           Float? // daily carbs goal
-  fatsGoal            Float? // daily fats goal
-  user                User     @relation(fields: [userId], references: [id])
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-}
-
-// Added for requirement #2
-model ShoppingList {
-  id        String             @id @default(uuid())
-  userId    String
-  name      String
-  user      User               @relation(fields: [userId], references: [id])
-  items     ShoppingListItem[]
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-}
-
-model ShoppingListItem {
-  id             String       @id @default(uuid())
-  shoppingListId String
-  ingredientId   String
-  quantity       Float
-  purchased      Boolean      @default(false)
-  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id])
-  ingredient     Ingredient   @relation(fields: [ingredientId], references: [id])
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-}
