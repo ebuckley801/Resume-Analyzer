@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "react-hot-toast";
-import { User, Mail, Lock } from "lucide-react";
+import { User, Mail, Lock, LogOut } from "lucide-react";
+import { signOut } from "next-auth/react";
 
 export default function AccountPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -92,6 +93,25 @@ export default function AccountPage() {
                 {isLoading ? "Saving..." : "Save Changes"}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6 bg-background/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-2xl">Sign Out</CardTitle>
+            <CardDescription>
+              Sign out of your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={() => signOut({ callbackUrl: "/" })}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
           </CardContent>
         </Card>
       </div>

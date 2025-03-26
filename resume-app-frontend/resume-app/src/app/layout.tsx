@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
-import { Navbar } from "@/components/ui/navbar";
+import { NavbarWrapper } from "@/components/ui/navbar-wrapper";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { headers } from "next/headers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,6 +19,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = headers();
+  const pathname = headersList.get("x-pathname") || "";
+  const isAuthPage = pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -29,7 +34,7 @@ export default function RootLayout({
         >
           <AuthProvider>
             <div className="min-h-screen flex flex-col bg-background">
-              <Navbar />
+              {!isAuthPage && <NavbarWrapper />}
               <main className="flex-1 flex flex-col">
                 {children}
               </main>
