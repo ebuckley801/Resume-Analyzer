@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { NavbarWrapper } from "@/components/ui/navbar-wrapper";
-import { Toaster } from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { headers } from "next/headers";
 
@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   const headersList = headers();
   const pathname = headersList.get("x-pathname") || "";
-  const isAuthPage = pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
+  const isAuthPage = pathname.startsWith("/(auth)");
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -36,10 +36,12 @@ export default function RootLayout({
             <div className="min-h-screen flex flex-col bg-background">
               {!isAuthPage && <NavbarWrapper />}
               <main className="flex-1 flex flex-col">
-                {children}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                  {children}
+                </div>
               </main>
             </div>
-            <Toaster position="bottom-right" />
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -6,13 +6,14 @@ const {
   default: flattenColorPalette,
 } = require("tailwindcss/lib/util/flattenColorPalette");
 
-const config = {
+const config: Config = {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    "*.{js,ts,jsx,tsx,mdx}",
   ],
   prefix: "",
   theme: {
@@ -31,8 +32,18 @@ const config = {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
+  				DEFAULT: '#3b82f6', // blue-500
+  				50: '#eff6ff',
+  				100: '#dbeafe',
+  				200: '#bfdbfe',
+  				300: '#93c5fd',
+  				400: '#60a5fa',
+  				500: '#3b82f6',
+  				600: '#2563eb',
+  				700: '#1d4ed8',
+  				800: '#1e40af',
+  				900: '#1e3a8a',
+  				950: '#172554',
   			},
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
@@ -64,7 +75,17 @@ const config = {
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
-  			}
+  			},
+  			sidebar: {
+  				DEFAULT: 'hsl(var(--sidebar-background))',
+  				foreground: 'hsl(var(--sidebar-foreground))',
+  				primary: 'hsl(var(--sidebar-primary))',
+  				'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+  				accent: 'hsl(var(--sidebar-accent))',
+  				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
+  				border: 'hsl(var(--sidebar-border))',
+  				ring: 'hsl(var(--sidebar-ring))',
+  			},
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
@@ -121,7 +142,7 @@ const config = {
       );
     },
   ],
-} satisfies Config
+}
 
 
 function addVariablesForColors({ addBase, theme }: any) {
