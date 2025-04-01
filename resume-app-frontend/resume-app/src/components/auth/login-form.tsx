@@ -40,7 +40,6 @@ export function LoginForm() {
       toast({
         title: "Sign In Failed",
         description: error instanceof Error ? error.message : "An error occurred while signing in",
-        variant: "destructive",
       })
     } finally {
       setIsLoading(false)

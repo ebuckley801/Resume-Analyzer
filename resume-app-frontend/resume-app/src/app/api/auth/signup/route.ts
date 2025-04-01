@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { hash } from "bcryptjs"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, Prisma } from "@prisma/client"
 
 const prisma = new PrismaClient()
 
@@ -79,11 +79,13 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Sign up error:", error)
     // Check if it's a Prisma error
-    if (error.code === 'P2002') {
-      return NextResponse.json(
-        { message: "Email already exists" },
-        { status: 400 }
-      )
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return NextResponse.json(
+          { message: "Email already exists" },
+          { status: 400 }
+        )
+      }
     }
     return NextResponse.json(
       { message: "Internal server error" },

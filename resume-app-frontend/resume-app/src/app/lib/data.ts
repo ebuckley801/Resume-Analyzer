@@ -45,7 +45,7 @@ export async function CheckUserPassword(password: string) {
     if (!data) {
       throw new Error("User not found");
     }
-    const passwordCorrect = await compare(password, data.password);
+    const passwordCorrect = await compare(password, data.passwordHash);
     if (!passwordCorrect) {
       throw new Error("Password is incorrect");
     }

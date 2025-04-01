@@ -11,7 +11,7 @@ export function ProcessingDisplay() {
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <h2 className="text-2xl font-semibold">Processing Your Resume</h2>
         <p className="text-muted-foreground text-center">
-          We're analyzing your resume and job description to provide you with detailed insights.
+          We&apos;re analyzing your resume and job description to provide you with detailed insights.
           This may take a few moments...
         </p>
       </CardContent>

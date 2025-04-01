@@ -52,7 +52,6 @@ export function SignInForm({ onSuccess, redirectTo = "/upload" }: SignInFormProp
       toast({
         title: "Sign In Failed",
         description: error instanceof Error ? error.message : "An error occurred while signing in",
-        variant: "destructive",
       })
     } finally {
       setIsLoading(false)
@@ -110,7 +109,7 @@ export function SignInForm({ onSuccess, redirectTo = "/upload" }: SignInFormProp
           onClick={() => router.push("/sign-up")}
           disabled={isLoading}
         >
-          Don't have an account? Sign Up
+          Don&apos;t have an account? Sign Up
         </Button>
       </div>
     </form>

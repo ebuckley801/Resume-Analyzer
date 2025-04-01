@@ -64,7 +64,7 @@ export default function ResultsPage() {
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold">Analysis Results</h1>
           <p className="text-xl text-muted-foreground">
-            Here's how your resume matches the job description
+            Here&apos;s how your resume matches the job description
           </p>
         </div>
         <AnalysisResultDisplay result={result} />

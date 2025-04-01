@@ -27,7 +27,7 @@ export async function POST(request: Request) {
          firstName,
          lastName,
          email: emailAddress,
-         password: hashedPassword,
+         passwordHash: hashedPassword,
          // access_token: null,
          // item_id: null,
          // request_id: null,
@@ -73,7 +73,7 @@ export async function PUT(request: Request) {
          firstName,
          lastName,
          email: emailAddress,
-         password: hashedPassword,
+         passwordHash: hashedPassword,
       },
    });
 

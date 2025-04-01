@@ -42,7 +42,6 @@ export function SignUpForm() {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
-        variant: "destructive",
       })
       return false
     }
@@ -51,7 +50,6 @@ export function SignUpForm() {
       toast({
         title: "Password Mismatch",
         description: "Your passwords do not match",
-        variant: "destructive",
       })
       return false
     }
@@ -61,7 +59,6 @@ export function SignUpForm() {
       toast({
         title: "Invalid Password",
         description: `Password must contain ${passwordValidation.errors.join(", ")}`,
-        variant: "destructive",
       })
       return false
     }
@@ -71,7 +68,6 @@ export function SignUpForm() {
       toast({
         title: "Invalid Email",
         description: "Please enter a valid email address",
-        variant: "destructive",
       })
       return false
     }
@@ -121,7 +117,6 @@ export function SignUpForm() {
       toast({
         title: "Sign Up Failed",
         description: error instanceof Error ? error.message : "An error occurred while creating your account",
-        variant: "destructive",
       })
     } finally {
       setIsLoading(false)
