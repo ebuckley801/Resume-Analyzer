@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  passwordHash      String    @map("password_hash")
+  firstName         String    @map("first_name")
+  lastName          String    @map("last_name")
+  isActive          Boolean   @default(true) @map("is_active")
+  isAdmin           Boolean   @default(false) @map("is_admin")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  lastLogin         DateTime? @map("last_login")
+  resetToken        String?   @map("reset_token")
+  resetTokenExpires DateTime? @map("reset_token_expires")
+  uploads           Upload[]
+  analysisResults   AnalysisResult[]
+
+  @@map("users")
+}
+
+model Upload {
+  id            String    @id @default(uuid())
+  filename      String    @map("filename")
+  processedText String    @map("processed_text")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  userId        String    @map("user_id")
+  user          User      @relation(fields: [userId], references: [id])
+  analysisResults AnalysisResult[]
+
+  @@map("uploads")
+}
+
+model JobDescription {
+  id            String    @id @default(uuid())
+  rawText       String    @map("raw_text")
+  analysisData  String    @map("analysis_data") // JSON string
+  contentHash   String    @unique @map("content_hash")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  analysisResults AnalysisResult[]
+
+  @@map("job_descriptions")
+}
+
+model AnalysisResult {
+  id                  String    @id @default(uuid())
+  analysisData        String    @map("analysis_data") // JSON string
+  resumeText          String    @map("resume_text")
+  jobDescriptionText  String    @map("job_description_text")
+  score               Float     // Score between 0 and 1
+  industry            String?
+  analysisVersion     String    @map("analysis_version")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  userId              String    @map("user_id")
+  uploadId            String    @map("upload_id")
+  jobDescriptionId    String    @map("job_description_id")
+  user                User      @relation(fields: [userId], references: [id])
+  upload              Upload    @relation(fields: [uploadId], references: [id])
+  jobDescription      JobDescription @relation(fields: [jobDescriptionId], references: [id])
+
+  @@map("analysis_results")
+}
+
+
