@@ -1,0 +1,56 @@
+# Ignore virtual environments
+.conda/
+venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs and runtime files
+*.log
+*.out
+*.err
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Coda files (if not required in Git)
+.coda/
+
+# Python-specific ignores
+*.pytest_cache/
+coverage/
+htmlcov/
+
+# Jupyter Notebook checkpoints (if using Jupyter for testing)
+.ipynb_checkpoints/
+
+# Flask session and instance folder (if created)
+instance/
+*.sqlite3
+
+# Node.js dependencies (if frontend uses Node.js)
+node_modules/
+
+# Mac OS files
+*.swp
+
+# Python packaging metadata
+*.egg-info/  
+
+# Distribution directories from packaging
+dist/  
+
+# Build directories from packaging
+build/         
+
+# Generic database files beyond SQLite
+*.db           
