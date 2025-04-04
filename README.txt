@@ -28,7 +28,6 @@ Virtual environment (recommended)
 Installation
 
 Clone the repository
-
 git clone https://github.com/Kaysaami/resume-matcher-api.git
 cd resume-analyzer-api
 
@@ -43,7 +42,6 @@ source venv/bin/activate
 
 Install dependencies
 pip install -r requirements.txt
-
 Make sure .env file in in the root folder
 
 
@@ -71,8 +69,7 @@ POST /auth/change-password - Change password (authenticated)
 Resume Management
 
 POST /upload - Upload a resume file (PDF/DOCX)
-POST /analyze - Analyze resume text with optional job description
-POST /analyze/match - Get job match score between resume and job description
+POST /analyze - Analyze resume text with optional job description, providing feedback and match score
 
 Admin Functions
 
