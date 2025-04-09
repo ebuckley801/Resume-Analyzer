@@ -11,17 +11,17 @@ datasource db {
 }
 
 model User {
-  id                String    @id @default(uuid()) @db.String(36)
-  email             String    @unique @db.String(120)
-  passwordHash      String    @map("password_hash") @db.String(256)
-  firstName         String    @map("first_name") @db.String(50)
-  lastName          String    @map("last_name") @db.String(50)
+  id                String    @id @default(uuid())
+  email             String    @unique
+  passwordHash      String    @map("password_hash")
+  firstName         String    @map("first_name")
+  lastName          String    @map("last_name")
   isActive          Boolean   @default(true) @map("is_active")
   isAdmin           Boolean   @default(false) @map("is_admin")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
   lastLogin         DateTime? @map("last_login")
-  resetToken        String?   @map("reset_token") @db.String(100)
+  resetToken        String?   @map("reset_token")
   resetTokenExpires DateTime? @map("reset_token_expires")
 
   // Relationships
@@ -33,12 +33,12 @@ model User {
 
 model Upload {
   id            Int    @id @default(autoincrement())
-  filename      String    @map("filename") @db.String(256)
+  filename      String    @map("filename")
   processedText String    @map("processed_text")
   createdAt     DateTime  @default(now()) @map("created_at")
 
   // Relationships (using string references to avoid circular imports)
-  userId        Int    @map("user_id")
+  userId        String    @map("user_id")
   user          User      @relation(fields: [userId], references: [id])
 
   // One-to-one relationship with AnalysisResult
@@ -50,8 +50,8 @@ model Upload {
 model JobDescription {
   id            Int    @id @default(autoincrement())
   rawText       String    @map("raw_text")
-  analysisData  Json    @map("analysis_data") // JSON string
-  contentHash   String    @unique @map("content_hash") @db.String(64)
+  analysisData  String    @map("analysis_data") // JSON string
+  contentHash   String    @unique @map("content_hash")
   createdAt     DateTime  @default(now()) @map("created_at")
 
   // Relationships
@@ -62,16 +62,16 @@ model JobDescription {
 
 model AnalysisResult {
   id                  Int    @id @default(autoincrement())
-  analysisData        Json    @map("analysis_data") // JSON string
+  analysisData        String    @map("analysis_data") // JSON string
   resumeText          String    @map("resume_text")
   jobDescriptionText  String    @map("job_description_text")
   score               Float     // Score between 0 and 1
-  industry            String?   @db.String(50)
-  analysisVersion     String     @db.String(20) @map("analysis_version")
+  industry            String?
+  analysisVersion     String    @map("analysis_version")
   createdAt           DateTime  @default(now()) @map("created_at")
 
   // Foreign Keys
-  userId              Int    @map("user_id")
+  userId              String    @map("user_id")
   uploadId            Int    @map("upload_id")
   jobDescriptionId    Int    @map("job_description_id")
 
