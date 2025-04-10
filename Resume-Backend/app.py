@@ -60,6 +60,7 @@ def create_app(config_name='development'):
         from models.user import User
         from models.upload import Upload
         from models.analysis import AnalysisResult
+        from models.job_description import JobDescription
         
         # Create tables
         db.create_all()
