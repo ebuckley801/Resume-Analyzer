@@ -27,6 +27,9 @@ class JobDescription(db.Model):
     # Relationships
     analyses = db.relationship('AnalysisResult', back_populates='job_description', lazy='dynamic')
 
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    user = db.relationship('User', back_populates='job_descriptions')
+    
     def __repr__(self):
         """Return a string representation of the job description model,
         displaying the first 8 characters of the content hash.

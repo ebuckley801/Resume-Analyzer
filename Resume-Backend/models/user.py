@@ -32,6 +32,8 @@ class User(db.Model):
     
     analyses = db.relationship('AnalysisResult', back_populates='user', lazy='dynamic', cascade='all, delete-orphan')
 
+    job_descriptions = db.relationship('JobDescription', back_populates='user', lazy='dynamic')
+
     def __repr__(self):
         return f'<User {self.email}>'
 

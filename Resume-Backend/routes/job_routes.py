@@ -11,92 +11,11 @@ from flask import Blueprint, request, jsonify, g
 from extensions import db, limiter
 from resume_matcher_services.file_parser import extract_text
 from models.job_description import JobDescription
-from routes.auth_utils import token_required
+from routes.auth_utils import get_current_user_optional
 
 job_bp = Blueprint('job', __name__, url_prefix='/job')
 
-@job_bp.route('/upload', methods=['POST'])
-@token_required
-@limiter.limit("10 per minute")
-def upload_job_description():
-    """
-    Endpoint to upload a job description as a file.
-    Processes the file to extract text, then stores it in the database.
-    """
-    try:
-        # Check if file is in the request
-        if 'file' not in request.files:
-            return jsonify({"error": "No file part"}), 400
-
-        file = request.files['file']
-
-        if not file.filename:
-            return jsonify({"error": "No selected file"}), 400
-
-        # Log file details
-        logging.info(f"Processing job description file: {file.filename}")
-
-        # Process the file
-        try:
-            result = extract_text(file)
-            
-            # Validate that we got text back
-            if not result.get('full_text'):
-                return jsonify({"error": "Failed to extract text from file"}), 400
-
-            job_text = result['full_text']
-            
-            # Calculate hash for deduplication
-            content_hash = hashlib.sha256(job_text.encode('utf-8')).hexdigest()
-            
-            # Check if this job description already exists
-            existing_job = JobDescription.query.filter_by(content_hash=content_hash).first()
-            
-            if existing_job:
-                return jsonify({
-                    "message": "Job description already exists",
-                    "job_id": existing_job.id,
-                    "text_preview": job_text[:200] + "..." if len(job_text) > 200 else job_text,
-                    "full_text": job_text
-                })
-            
-            # Create a blank analysis_data structure (will be filled by analyzer)
-            analysis_data = {
-                "skills": [],
-                "requirements": [],
-                "experience": {},
-                "industry": None,
-                "job_title": None
-            }
-            
-            # Create and commit the job description record
-            new_job = JobDescription(
-                raw_text=job_text,
-                content_hash=content_hash,
-                analysis_data=analysis_data
-            )
-            
-            db.session.add(new_job)
-            db.session.commit()
-
-            # Return response
-            return jsonify({
-                "message": "Job description processed successfully",
-                "job_id": new_job.id, 
-                "text_preview": job_text[:200] + "..." if len(job_text) > 200 else job_text,
-                "full_text": job_text
-            })
-
-        except ValueError as e:
-            logging.error(f"Extraction error: {str(e)}")
-            return jsonify({"error": str(e)}), 400
-
-    except Exception as e:
-        logging.error(f"Unexpected error: {str(e)}", exc_info=True)
-        return jsonify({"error": f"Server error: {str(e)}"}), 500
-
 @job_bp.route('/text', methods=['POST'])
-@token_required
 @limiter.limit("10 per minute")
 def submit_job_description_text():
     """
@@ -104,6 +23,9 @@ def submit_job_description_text():
     Validates the text and stores it in the database.
     """
     try:
+        # Get current user (if authenticated)
+        current_user = get_current_user_optional()
+
         data = request.get_json()
         
         if not data or 'text' not in data:
@@ -144,6 +66,10 @@ def submit_job_description_text():
             analysis_data=analysis_data
         )
         
+        # If user is authenticated, link the job description to the user
+        if current_user:
+            new_job.user_id = current_user.id
+
         db.session.add(new_job)
         db.session.commit()
 
@@ -160,7 +86,6 @@ def submit_job_description_text():
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 @job_bp.route('/<int:job_id>', methods=['GET'])
-@token_required
 def get_job_description(job_id):
     """
     Endpoint to retrieve a specific job description by ID.

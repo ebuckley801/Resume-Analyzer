@@ -97,3 +97,29 @@ def admin_required(f):
         return f(*args, **kwargs)
     
     return decorated
+
+def get_current_user_optional():
+    """Get current user if authenticated, otherwise return None."""
+    token = None
+    
+    # Get token from Authorization header
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+    
+    if not token:
+        return None
+    
+    try:
+        # Decode the token
+        payload = jwt.decode(
+            token, 
+            current_app.config.get('SECRET_KEY', 'dev-key'),
+            algorithms=['HS256']
+        )
+        
+        # Find the user
+        return User.query.get(payload['user_id'])
+        
+    except:
+        return None
