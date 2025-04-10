@@ -8,13 +8,12 @@ import uuid
 import jwt
 from flask import current_app
 from extensions import db
-# Fix the import path from resume_matcher_services.security
 from resume_matcher_services.security import hash_password, verify_password
 
 class User(db.Model):
     __tablename__ = 'users'
 
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
     first_name = db.Column(db.String(50))
