@@ -10,7 +10,6 @@ import jwt
 
 from extensions import limiter, db
 from models.user import User
-# Fix the import path from services.security to resume_matcher_services.security
 from resume_matcher_services.security import validate_password_complexity, get_password_rules
 from routes.auth_utils import token_required
 
