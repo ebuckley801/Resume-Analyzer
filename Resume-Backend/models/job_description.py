@@ -6,18 +6,15 @@ Includes deduplication via content hashing.
 
 from datetime import datetime, timezone
 from extensions import db
-from sqlalchemy.dialects.postgresql import JSONB, JSON
+from sqlalchemy.dialects.postgresql import JSONB
 
 class JobDescription(db.Model):
     __tablename__ = 'job_descriptions'
     
     id = db.Column(db.Integer, primary_key=True)
     raw_text = db.Column(db.Text, nullable=False)
-    # Mixed JSON type: use JSONB for PostgreSQL and JSON for SQLite.
-    analysis_data = db.Column(
-        JSONB().with_variant(JSON(), 'sqlite'),
-        nullable=False
-    )
+    # Use native PostgreSQL JSONB for better performance and querying capabilities
+    analysis_data = db.Column(JSONB, nullable=False)
     # Content hash for deduplication (SHA-256 hash of raw_text).
     content_hash = db.Column(db.String(64), unique=True, index=True, nullable=False)
     

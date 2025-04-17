@@ -39,7 +39,7 @@ class Config:
         
         return {
             'development': {
-                'SQLALCHEMY_DATABASE_URI': 'sqlite:///resume_analyzer.db',
+                'SQLALCHEMY_DATABASE_URI': os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost/resume_matcher_dev'),
                 'SQLALCHEMY_TRACK_MODIFICATIONS': False,
                 'MAX_CONTENT_LENGTH': 5 * 1024 * 1024,  # 5MB
                 'UPLOAD_FOLDER': Path('uploads'),
@@ -49,7 +49,7 @@ class Config:
                 'DEBUG': True
             },
             'testing': {
-                'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
+                'SQLALCHEMY_DATABASE_URI': os.getenv('TEST_DATABASE_URL', 'postgresql://postgres:postgres@localhost/resume_matcher_test'),
                 'SQLALCHEMY_TRACK_MODIFICATIONS': False,
                 'MAX_CONTENT_LENGTH': 5 * 1024 * 1024,  # 5MB
                 'UPLOAD_FOLDER': Path('test_uploads'),
@@ -59,7 +59,7 @@ class Config:
                 'TESTING': True
             },
             'production': {
-                'SQLALCHEMY_DATABASE_URI': os.getenv('DATABASE_URI', 'postgresql://user:pass@localhost/resumedb'),
+                'SQLALCHEMY_DATABASE_URI': os.getenv('DATABASE_URL', 'postgresql://user:pass@localhost/resumedb'),
                 'SQLALCHEMY_TRACK_MODIFICATIONS': False,
                 'MAX_CONTENT_LENGTH': 5 * 1024 * 1024,  # 5MB
                 'UPLOAD_FOLDER': Path('/var/www/uploads'),

@@ -1,4 +1,4 @@
-# models/ analysis.py
+# models/analysis.py
 """
 Analysis Result Model - Stores resume analysis outcomes.
 Connects users, uploads, and job descriptions.
@@ -6,18 +6,15 @@ Connects users, uploads, and job descriptions.
 
 from datetime import datetime, timezone
 from extensions import db
-from sqlalchemy.dialects.postgresql import JSONB, JSON
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 class AnalysisResult(db.Model):
     __tablename__ = 'analysis_results'
 
     id = db.Column(db.Integer, primary_key=True)
-    # Use JSONB for PostgreSQL and JSON for SQLite
-    analysis_data = db.Column(
-        JSONB().with_variant(JSON(), 'sqlite'),
-        nullable=False
-    )
+    # Use native PostgreSQL JSONB for better performance and querying capabilities
+    analysis_data = db.Column(JSONB, nullable=False)
     resume_text = db.Column(db.Text, nullable=False)
     job_description_text = db.Column(db.Text, nullable=False)
     score = db.Column(db.Float, nullable=False)
