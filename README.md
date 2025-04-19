@@ -249,7 +249,7 @@ For development, the following test users might be seeded (check database seedin
 * `POST /admin/users/<int:user_id>/toggle-admin`: Grant or revoke admin privileges for a user.
 * `GET /admin/stats`: Retrieve system statistics (e.g., user counts).
 
-### Utility
+### Utility (`/`)
 
 * `GET /health` - API health check
 * `GET /` - API documentation overview
