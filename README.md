@@ -205,10 +205,9 @@ These instructions guide you through setting up and running the `resume-matcher-
 
 ### Test Users
 
-For development, the following test users might be seeded (check database seeding scripts if available):
-
-* **Admin:** `admin@example.com` / `adminpassword`
-* **User:** `user@example.com` / `userpassword`
+* The first user to register in a fresh database automatically becomes an admin
+* Subsequent users are regular users by default
+* Admin privileges for additional users must be granted by an existing admin
 
 ## API Endpoints
 
