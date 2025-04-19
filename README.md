@@ -92,7 +92,7 @@ resume-matcher-core/
 ├── requirements.txt          # Dependencies
 └── .gitignore                # Ignored files
 
-Resume-matcher-api/
+resume-matcher-api/
 ├── app.py                    # Flask app entry point
 ├── config.py                 # Configuration settings
 ├── error_handlers.py         # Custom error handling
