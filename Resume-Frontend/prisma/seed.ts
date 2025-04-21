@@ -1,69 +1,73 @@
-const { PrismaClient } = require('@prisma/client')
-const { hash } = require('bcryptjs')
+import { PrismaClient } from '@prisma/client';
+import bcryptjs from 'bcryptjs';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 async function main() {
   // Create a test user
-  const testUser = await prisma.user.create({
+  const passwordHash = await bcryptjs.hash('password123', 10);
+  const user = await prisma.user.create({
     data: {
       email: 'test@example.com',
-      passwordHash: await hash('password123', 12),
+      passwordHash,
       firstName: 'Test',
       lastName: 'User',
+      isActive: true,
+      isAdmin: true,
     },
-  })
-
-  // Create a test upload
-  const testUpload = await prisma.upload.create({
-    data: {
-      filename: 'test-resume.pdf',
-      processedText: 'Sample resume content...',
-      userId: testUser.id,
-    },
-  })
+  });
 
   // Create a test job description
-  const testJobDescription = await prisma.jobDescription.create({
+  const jobDescription = await prisma.jobDescription.create({
     data: {
-      rawText: 'Sample job description...',
-      analysisData: JSON.stringify({
-        requiredSkills: ['JavaScript', 'React', 'Node.js'],
-        preferredSkills: ['TypeScript', 'AWS'],
+      rawText: 'Software Engineer position at Tech Corp',
+      analysisData: {
+        skills: ['JavaScript', 'Python', 'React'],
+        industry: 'Technology',
+        jobTitle: 'Software Engineer',
         experience: '3+ years',
-      }),
-      contentHash: 'test-hash-123',
+        requirements: ['Bachelor\'s degree', 'Strong problem-solving skills'],
+      },
+      contentHash: 'abc123',
+      userId: user.id,
     },
-  })
+  });
+
+  // Create a test upload
+  const upload = await prisma.upload.create({
+    data: {
+      filename: 'test-resume.pdf',
+      processedText: 'This is a test resume',
+      userId: user.id,
+    },
+  });
 
   // Create a test analysis result
   await prisma.analysisResult.create({
     data: {
-      analysisData: JSON.stringify({
-        matchingStrengths: 'Strong JavaScript and React experience',
-        areasForImprovement: 'Could improve AWS knowledge',
-        missingRequirements: 'None',
-        recommendations: 'Consider getting AWS certification',
-      }),
-      resumeText: 'Sample resume text...',
-      jobDescriptionText: 'Sample job description text...',
-      score: 0.85,
-      industry: 'Technology',
-      analysisVersion: '1.0',
-      userId: testUser.id,
-      uploadId: testUpload.id,
-      jobDescriptionId: testJobDescription.id,
+      jobId: jobDescription.id,
+      resumeText: 'This is a test resume',
+      analysisData: {
+        score: 85,
+        industry: 'Technology',
+        recommendations: ['Add more details about your experience'],
+        strengths: ['Strong technical skills'],
+        areasForImprovement: ['Could use more project examples'],
+        missingRequirements: ['No mention of specific technologies'],
+      },
+      userId: user.id,
+      uploadId: upload.id,
     },
-  })
+  });
 
-  console.log('Database has been seeded. 🌱')
+  console.log('Database has been seeded. 🌱');
 }
 
 main()
   .catch((e) => {
-    console.error(e)
-    process.exit(1)
+    console.error(e);
+    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect()
-  }) 
+    await prisma.$disconnect();
+  }); 

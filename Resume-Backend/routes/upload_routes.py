@@ -6,16 +6,18 @@ Handles file validation, text extraction, and section detection.
 
 import logging
 from datetime import datetime, timezone
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from extensions import db, limiter
 from resume_matcher_services.file_parser import extract_text
 from resume_matcher_services.section_extractor import SectionExtractor
 from models.upload import Upload
+from routes.auth_utils import token_required
 
 upload_bp = Blueprint('upload', __name__)
 section_extractor = SectionExtractor()
 
 @upload_bp.route('/upload', methods=['POST'])
+@token_required
 @limiter.limit("10 per minute")
 def upload_file():
     """
@@ -24,6 +26,9 @@ def upload_file():
     a database record for the upload.
     """
     try:
+        # Get current user from auth
+        current_user = g.current_user
+
         # Log request information
         logging.info("=== Upload Request Details ===")
         logging.info(f"Content-Type: {request.content_type}")
@@ -77,7 +82,8 @@ def upload_file():
             # Create and commit the upload record in the database
             new_upload = Upload(
                 filename=file.filename,
-                processed_text=result['full_text']
+                processed_text=result['full_text'],
+                user_id=current_user.id  # Add the user_id from the authenticated user
             )
             db.session.add(new_upload)
             db.session.commit()

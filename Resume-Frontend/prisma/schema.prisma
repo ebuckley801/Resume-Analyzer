@@ -6,81 +6,79 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id                String    @id @default(uuid())
-  email             String    @unique
-  passwordHash      String    @map("password_hash")
-  firstName         String    @map("first_name")
-  lastName          String    @map("last_name")
-  isActive          Boolean   @default(true) @map("is_active")
-  isAdmin           Boolean   @default(false) @map("is_admin")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  lastLogin         DateTime? @map("last_login")
-  resetToken        String?   @map("reset_token")
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  isActive      Boolean   @default(true) @map("is_active")
+  isAdmin       Boolean   @default(false) @map("is_admin")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  lastLogin     DateTime? @map("last_login")
+  resetToken    String?   @map("reset_token")
   resetTokenExpires DateTime? @map("reset_token_expires")
-
-  // Relationships
-  uploads           Upload[]
-  analysisResults   AnalysisResult[]
+  uploads       Upload[]
+  analyses      AnalysisResult[]
+  jobDescriptions JobDescription[]
 
   @@map("users")
 }
 
-model Upload {
-  id            Int    @id @default(autoincrement())
-  filename      String    @map("filename")
-  processedText String    @map("processed_text")
-  createdAt     DateTime  @default(now()) @map("created_at")
-
-  // Relationships (using string references to avoid circular imports)
-  userId        String    @map("user_id")
-  user          User      @relation(fields: [userId], references: [id])
-
-  // One-to-one relationship with AnalysisResult
-  analysisResults AnalysisResult[]
-
-  @@map("uploads")
-}
-
 model JobDescription {
-  id            Int    @id @default(autoincrement())
-  rawText       String    @map("raw_text")
-  analysisData  String    @map("analysis_data") // JSON string
-  contentHash   String    @unique @map("content_hash")
-  createdAt     DateTime  @default(now()) @map("created_at")
-
-  // Relationships
-  analysisResults AnalysisResult[]
+  id          Int      @id @default(autoincrement())
+  rawText     String   @map("raw_text") @db.Text
+  analysisData Json    @map("analysis_data")
+  contentHash String   @map("content_hash")
+  createdAt   DateTime @default(now()) @map("created_at")
+  analyses    AnalysisResult[]
+  userId      Int      @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
 
   @@map("job_descriptions")
 }
 
+model Upload {
+  id            Int       @id @default(autoincrement())
+  filename      String
+  processedText String?   @map("processed_text")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  userId        Int       @map("user_id")
+  user          User      @relation(fields: [userId], references: [id])
+  analyses      AnalysisResult[]
+
+  @@map("uploads")
+}
+
 model AnalysisResult {
-  id                  Int    @id @default(autoincrement())
-  analysisData        String    @map("analysis_data") // JSON string
-  resumeText          String    @map("resume_text")
-  jobDescriptionText  String    @map("job_description_text")
-  score               Float     // Score between 0 and 1
-  industry            String?
-  analysisVersion     String    @map("analysis_version")
-  createdAt           DateTime  @default(now()) @map("created_at")
-
-  // Foreign Keys
-  userId              String    @map("user_id")
-  uploadId            Int    @map("upload_id")
-  jobDescriptionId    Int    @map("job_description_id")
-
-  // Relationships
-  user                User      @relation(fields: [userId], references: [id])
-  upload              Upload    @relation(fields: [uploadId], references: [id])
-  jobDescription      JobDescription @relation(fields: [jobDescriptionId], references: [id])
+  id          Int      @id @default(autoincrement())
+  jobId       Int      @map("job_id")
+  resumeText  String   @map("resume_text") @db.Text
+  analysisData Json    @map("analysis_data")
+  createdAt   DateTime @default(now()) @map("created_at")
+  userId      Int      @map("user_id")
+  uploadId    Int?     @map("upload_id")
+  user        User     @relation(fields: [userId], references: [id])
+  upload      Upload?  @relation(fields: [uploadId], references: [id])
+  job         JobDescription @relation(fields: [jobId], references: [id])
 
   @@map("analysis_results")
 }
 
+model Analysis {
+  id           Int      @id @default(autoincrement())
+  job_id       Int
+  resume_text  String
+  analysis_data Json
+  user_id      String
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
+  @@index([user_id])
+  @@index([job_id])
+} 

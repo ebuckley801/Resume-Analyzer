@@ -20,15 +20,22 @@ interface AnalysisResult {
 export default function ResultsPage() {
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchResults = async () => {
       try {
         const response = await fetch('/api/results');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch results');
+        }
         const data = await response.json();
-        setResults(data);
+        // Ensure data is an array
+        setResults(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching results:', error);
+        setError(error instanceof Error ? error.message : 'An error occurred');
       } finally {
         setLoading(false);
       }
@@ -56,6 +63,27 @@ export default function ResultsPage() {
     return (
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container py-8">
+        <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
+          <p className="font-medium">Error loading results</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (results.length === 0) {
+    return (
+      <div className="container py-8">
+        <div className="rounded-lg border p-4 text-center">
+          <p className="text-muted-foreground">No analysis results found</p>
+        </div>
       </div>
     );
   }

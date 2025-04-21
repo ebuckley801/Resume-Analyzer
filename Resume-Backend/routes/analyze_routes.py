@@ -5,14 +5,52 @@ Provides endpoints for full resume analysis and job matching analysis.
 """
 
 import logging
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from resume_matcher_services.resume_analyzer import analyzer
 from resume_matcher_services.feedback_generator import ResumeFeedbackGenerator
 from models.job_description import JobDescription
+from models.upload import Upload
+from routes.auth_utils import token_required
 
 analyze_bp = Blueprint('analyze', __name__)
 
+@analyze_bp.route('/results', methods=['GET'])
+@token_required
+def get_analysis_results():
+    """
+    Get all analysis results for the current user.
+    Returns a list of analysis results with their status and scores.
+    """
+    try:
+        current_user = g.current_user
+        
+        # Get all uploads for the current user
+        uploads = Upload.query.filter_by(user_id=current_user.id).all()
+        
+        results = []
+        for upload in uploads:
+            # Get the associated job description if any
+            job = JobDescription.query.filter_by(user_id=current_user.id).first()
+            
+            result = {
+                "id": str(upload.id),
+                "resumeName": upload.filename,
+                "createdAt": upload.created_at.isoformat(),
+                "status": "completed",  # Assuming all uploads are processed
+                "score": 0.85,  # Placeholder score - you should calculate this based on your analysis
+                "industry": None,  # Placeholder - you should get this from your analysis
+                "jobDescriptionPreview": job.raw_text[:200] + "..." if job else "No job description"
+            }
+            results.append(result)
+            
+        return jsonify(results)
+        
+    except Exception as e:
+        logging.error(f"Error fetching analysis results: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to fetch analysis results"}), 500
+
 @analyze_bp.route('/analyze', methods=['POST'])
+@token_required
 def analyze_resume():
     """
     Endpoint for analyzing a resume with an optional job description.

@@ -1,50 +1,37 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/lib/authOptions';
-
-const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session?.backendToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get the user
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    // Get all analysis results for the user
-    const analysisResults = await prisma.analysisResult.findMany({
-      where: { userId: user.id },
-      include: {
-        upload: true,
-        jobDescription: true,
-      },
-      orderBy: {
-        createdAt: 'desc'
+    // Get analysis results from backend
+    const backendUrl = process.env.BACKEND_API_URL || 'http://localhost:5001';
+    const backendResponse = await fetch(`${backendUrl}/analyze/results`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.backendToken}`
       }
     });
 
-    // Format the results
-    const formattedResults = analysisResults.map(result => ({
-      id: result.id,
-      score: result.score,
-      industry: result.industry,
-      createdAt: result.createdAt,
-      resumeName: result.upload.filename,
-      jobDescriptionPreview: result.jobDescription.rawText.substring(0, 100) + '...',
-      status: result.analysisData ? 'completed' : 'processing'
-    }));
+    if (!backendResponse.ok) {
+      const errorData = await backendResponse.json();
+      return NextResponse.json(
+        { error: errorData.error || 'Failed to fetch analysis results' },
+        { status: backendResponse.status }
+      );
+    }
 
-    return NextResponse.json(formattedResults);
+    const backendData = await backendResponse.json();
+    
+    // Ensure we always return an array
+    const results = Array.isArray(backendData) ? backendData : [];
+    
+    return NextResponse.json(results);
 
   } catch (error) {
     console.error('Error fetching analysis results:', error);
@@ -58,7 +45,7 @@ export async function GET(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session?.backendToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -72,28 +59,22 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Get the analysis result
-    const analysisResult = await prisma.analysisResult.findUnique({
-      where: { id },
-      include: { user: true }
+    // Delete analysis result from backend
+    const backendUrl = process.env.BACKEND_API_URL || 'http://localhost:5001';
+    const backendResponse = await fetch(`${backendUrl}/analyze/results/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${session.backendToken}`
+      }
     });
 
-    if (!analysisResult) {
+    if (!backendResponse.ok) {
+      const errorData = await backendResponse.json();
       return NextResponse.json(
-        { error: 'Analysis result not found' },
-        { status: 404 }
+        { error: errorData.error || 'Failed to delete analysis result' },
+        { status: backendResponse.status }
       );
     }
-
-    // Verify the user has access to this result
-    if (analysisResult.user.email !== session.user.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
-    // Delete the analysis result and related records
-    await prisma.analysisResult.delete({
-      where: { id }
-    });
 
     return NextResponse.json({ message: 'Analysis result deleted successfully' });
 

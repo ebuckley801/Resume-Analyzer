@@ -1,7 +1,7 @@
-import prisma from "./prisma";
 import { authOptions } from "./authOptions";
 import { getServerSession } from "next-auth";
-import { compare } from "bcrypt";
+
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://localhost:5001';
 
 async function getServerSessionUserId() {
   const session = await getServerSession(authOptions);
@@ -13,11 +13,22 @@ async function getServerSessionUserId() {
 
 export async function getUserData() {
   try {
-    const userId = await getServerSessionUserId();
-    const data = await prisma.user.findUnique({
-      where: { id: userId },
+    const session = await getServerSession(authOptions);
+    if (!session?.backendToken) {
+      throw new Error("Not authenticated");
+    }
+
+    const response = await fetch(`${BACKEND_URL}/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${session.backendToken}`
+      }
     });
-    return data;
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch user data");
+    }
+
+    return await response.json();
   } catch (error) {
     console.error("Error in getUserData:", error);
     throw error;
@@ -26,10 +37,23 @@ export async function getUserData() {
 
 export async function deleteUserData() {
   try {
-    const userId = await getServerSessionUserId();
-    await prisma.user.delete({
-      where: { id: userId },
+    const session = await getServerSession(authOptions);
+    if (!session?.backendToken) {
+      throw new Error("Not authenticated");
+    }
+
+    const response = await fetch(`${BACKEND_URL}/auth/delete-account`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.backendToken}`
+      }
     });
+
+    if (!response.ok) {
+      throw new Error("Failed to delete user data");
+    }
+
+    return { success: true };
   } catch (error) {
     console.error("Error in deleteUserData:", error);
     throw error;
@@ -38,18 +62,25 @@ export async function deleteUserData() {
 
 export async function CheckUserPassword(password: string) {
   try {
-    const userId = await getServerSessionUserId();
-    const data = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-    if (!data) {
-      throw new Error("User not found");
+    const session = await getServerSession(authOptions);
+    if (!session?.backendToken) {
+      throw new Error("Not authenticated");
     }
-    const passwordCorrect = await compare(password, data.password);
-    if (!passwordCorrect) {
+
+    const response = await fetch(`${BACKEND_URL}/auth/verify-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.backendToken}`
+      },
+      body: JSON.stringify({ password })
+    });
+
+    if (!response.ok) {
       throw new Error("Password is incorrect");
     }
-    return passwordCorrect;
+
+    return true;
   } catch (error) {
     console.error("Error in CheckUserPassword:", error);
     throw error;

@@ -73,5 +73,5 @@ def create_app(config_name='development'):
 
 if __name__ == '__main__':
     app = create_app('development')
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5001))  # Changed default port to 5001
     app.run(host='0.0.0.0', port=port, debug=True)

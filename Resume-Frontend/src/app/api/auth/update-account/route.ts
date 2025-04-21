@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/lib/authOptions';
-import prisma from '@/app/lib/prisma';
-import { compare, hash } from 'bcryptjs';
 import { z } from 'zod';
 
 const updateAccountSchema = z.object({
@@ -17,76 +15,47 @@ const updateAccountSchema = z.object({
 export async function PUT(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session?.user?.backendToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
     const validatedData = updateAccountSchema.parse(body);
 
-    // Get current user
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    // Update account with backend
+    const backendUrl = process.env.BACKEND_API_URL || 'http://localhost:5001';
+    const backendResponse = await fetch(`${backendUrl}/auth/update-account`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.user.backendToken}`
+      },
+      body: JSON.stringify({
+        first_name: validatedData.firstName,
+        last_name: validatedData.lastName,
+        email: validatedData.email,
+        current_password: validatedData.currentPassword,
+        new_password: validatedData.newPassword
+      })
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    // Verify current password
-    const isPasswordValid = await compare(
-      validatedData.currentPassword,
-      user.passwordHash
-    );
-
-    if (!isPasswordValid) {
+    if (!backendResponse.ok) {
+      const errorData = await backendResponse.json();
       return NextResponse.json(
-        { error: 'Current password is incorrect' },
-        { status: 400 }
+        { error: errorData.error || 'Failed to update account' },
+        { status: backendResponse.status }
       );
     }
 
-    // Check if new email is already in use by another user
-    if (validatedData.email !== user.email) {
-      const existingUser = await prisma.user.findUnique({
-        where: { email: validatedData.email }
-      });
-
-      if (existingUser) {
-        return NextResponse.json(
-          { error: 'Email is already in use' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Prepare update data
-    const updateData: any = {
-      firstName: validatedData.firstName,
-      lastName: validatedData.lastName,
-      email: validatedData.email,
-    };
-
-    // Update password if provided
-    if (validatedData.newPassword) {
-      updateData.passwordHash = await hash(validatedData.newPassword, 12);
-    }
-
-    // Update user
-    const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: updateData,
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
-
+    const backendData = await backendResponse.json();
     return NextResponse.json({
       message: 'Account updated successfully',
-      user: updatedUser,
+      user: {
+        id: backendData.user.id,
+        email: backendData.user.email,
+        firstName: backendData.user.first_name,
+        lastName: backendData.user.last_name
+      }
     });
 
   } catch (error) {

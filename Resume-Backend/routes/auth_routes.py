@@ -120,7 +120,14 @@ def register():
 
     return jsonify({
         "message": "User created successfully",
-        "user_id": user.id
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "is_admin": user.is_admin,
+            "is_active": True
+        }
     }), 201
 
 @auth_bp.route('/me', methods=['GET'])

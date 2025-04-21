@@ -50,13 +50,14 @@ export function UploadForm() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to analyze resume');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze resume');
       }
 
       const data = await response.json();
-      router.push(`/results/${data.analysisId}`);
-    } catch (err) {
-      setError('An error occurred while processing your request. Please try again.');
+      router.push(`/results/${data.id}`);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while processing your request. Please try again.');
     } finally {
       setIsLoading(false);
     }

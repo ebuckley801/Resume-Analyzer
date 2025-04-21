@@ -61,3 +61,5 @@ resume-app-frontend/.DS_Store
 resume-app-frontend/resume-app/node_modules
 resume-app-frontend/resume-app/next-env.d.ts
 
+#whl files
+*.whl

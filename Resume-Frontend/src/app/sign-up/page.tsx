@@ -11,6 +11,8 @@ import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { PasswordStrength } from "@/components/ui/password-strength";
 import { PasswordRequirements } from "@/components/ui/password-requirements";
+import { toast } from 'react-hot-toast';
+import Image from 'next/image';
 
 const passwordRequirements = [
   { regex: /.{8,}/, label: "At least 8 characters" },
@@ -73,6 +75,7 @@ export default function SignUp() {
     const emailValidationError = validateEmail(email);
     if (emailValidationError) {
       setEmailError(emailValidationError);
+      toast.error(emailValidationError);
       setIsLoading(false);
       return;
     }
@@ -81,190 +84,202 @@ export default function SignUp() {
     const passwordError = validatePassword(password);
     if (passwordError) {
       setError(passwordError);
+      toast.error(passwordError);
       setIsLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      toast.error('Passwords do not match');
       setIsLoading(false);
       return;
     }
 
     try {
-      // Register the user
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create account');
-      }
-
-      // Sign in the user after successful registration
+      // Register the user using NextAuth
       const result = await signIn('credentials', {
         email,
         password,
+        firstName,
+        lastName,
         redirect: false,
       });
 
       if (result?.error) {
-        throw new Error('Failed to sign in after registration');
+        throw new Error(result.error);
       }
 
-      router.push('/');
+      toast.success('Account created successfully!');
+      router.push('/dashboard');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <main className="container mx-auto py-8 px-4">
-      <div className="flex justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">Create an Account</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    disabled={isLoading}
-                    value={email}
-                    onChange={handleEmailChange}
-                    className={emailError ? "border-red-500" : ""}
-                  />
-                  {emailError && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <AlertCircle className="h-4 w-4 text-red-500" />
-                    </div>
-                  )}
-                </div>
-                {emailError && (
-                  <p className="text-sm text-red-500">{emailError}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    disabled={isLoading}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-500" />
-                    )}
-                  </Button>
-                </div>
-                <PasswordStrength password={password} />
-                <PasswordRequirements password={password} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    required
-                    disabled={isLoading}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-500" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              {error && (
-                <p className="text-sm text-red-500">{error}</p>
-              )}
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isLoading || !password || !!validatePassword(password) || !!emailError}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
-                  </>
-                ) : (
-                  'Create Account'
-                )}
-              </Button>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
+        {/* Left side - Image */}
+        <div className="hidden md:flex items-center justify-center">
+          <div className="relative w-full h-[600px]">
+            <Image
+              src="/images/sign-up-illustration.svg"
+              alt="Sign up illustration"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
+
+        {/* Right side - Sign up form */}
+        <div className="flex items-center justify-center">
+          <Card className="w-full max-w-md shadow-lg border-0 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="space-y-1 pb-8">
+              <CardTitle className="text-2xl font-bold tracking-tight text-center">Create an Account</CardTitle>
               <p className="text-sm text-center text-muted-foreground">
                 Already have an account?{' '}
-                <Link href="/sign-in" className="text-primary hover:underline">
+                <Link 
+                  href="/sign-in" 
+                  className="font-medium text-primary hover:underline"
+                >
                   Sign in
                 </Link>
               </p>
-            </form>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      name="firstName"
+                      type="text"
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      name="lastName"
+                      type="text"
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <div className="relative">
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        disabled={isLoading}
+                        value={email}
+                        onChange={handleEmailChange}
+                        className={emailError ? "border-red-500" : ""}
+                      />
+                      {emailError && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                        </div>
+                      )}
+                    </div>
+                    {emailError && (
+                      <p className="text-sm text-red-500">{emailError}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        disabled={isLoading}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <PasswordStrength password={password} />
+                    <PasswordRequirements password={password} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
+                        disabled={isLoading}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                    {error}
+                  </div>
+                )}
+
+                <Button 
+                  type="submit"
+                  className="w-full h-11 rounded-lg" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    'Create account'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
