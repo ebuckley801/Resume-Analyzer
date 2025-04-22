@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Force the backend URL to use port 5001
-        const backendUrl = 'http://localhost:5001';
+        const backendUrl = process.env.BACKEND_API_URL;
         console.log('Attempting to connect to backend at:', backendUrl);
         
         // Check if this is a registration request
@@ -129,6 +129,7 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development'

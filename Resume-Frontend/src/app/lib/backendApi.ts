@@ -13,7 +13,7 @@ export async function callBackendApi(
 ) {
   const session = await getServerSession(authOptions);
   
-  const apiUrl = process.env.BACKEND_API_URL || 'http://localhost:5000';
+  const apiUrl = process.env.BACKEND_API_URL || 'http://localhost:5001';
   const url = `${apiUrl}/${endpoint}`;
   
   // Default headers
@@ -85,7 +85,7 @@ export async function postToBackend<T, R>(endpoint: string, data: T): Promise<R>
 export async function uploadToBackend<R>(endpoint: string, formData: FormData): Promise<R> {
   const session = await getServerSession(authOptions);
   
-  const apiUrl = process.env.BACKEND_API_URL || 'http://localhost:5000';
+  const apiUrl = process.env.BACKEND_API_URL || 'http://localhost:5001';
   const url = `${apiUrl}/${endpoint}`;
   
   // Create headers without Content-Type (browser will set it with boundary)

@@ -30,12 +30,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const { job_id, resume_text, analysis_data } = data;
+    const { job_id, resume_text, analysis_data, upload_id } = data;
 
-    if (!job_id || !resume_text || !analysis_data) {
-      console.log('Missing fields:', { job_id, resume_text, analysis_data });
+    if (!job_id || !resume_text || !analysis_data || !upload_id) {
+      console.log('Missing fields:', { job_id, resume_text, analysis_data, upload_id });
       return NextResponse.json(
-        { error: 'Missing required fields: job_id, resume_text, and analysis_data are required' },
+        { error: 'Missing required fields: job_id, resume_text, analysis_data, and upload_id are required' },
         { status: 400 }
       );
     }
@@ -47,8 +47,14 @@ export async function POST(request: Request) {
           jobId: parseInt(job_id),
           resumeText: resume_text,
           analysisData: analysis_data,
-          userId: parseInt(session.user.id)
+          userId: parseInt(session.user.id),
+          uploadId: parseInt(upload_id)
         }
+      });
+
+      // Get the upload to get the filename
+      const upload = await prisma.upload.findUnique({
+        where: { id: parseInt(upload_id) }
       });
 
       // Format the response to match what the frontend expects
@@ -57,7 +63,7 @@ export async function POST(request: Request) {
         score: analysis_data.score || 0,
         industry: analysis_data.industry || null,
         createdAt: analysis.createdAt.toISOString(),
-        resumeName: 'Uploaded Resume', // You might want to get this from the upload
+        resumeName: upload?.filename || 'Uploaded Resume',
         jobDescriptionPreview: resume_text.substring(0, 100) + '...',
         status: 'completed',
         matchingStrengths: analysis_data.matchingStrengths || '',

@@ -5,12 +5,15 @@ Provides endpoints for full resume analysis and job matching analysis.
 """
 
 import logging
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, current_app
 from resume_matcher_services.resume_analyzer import analyzer
 from resume_matcher_services.feedback_generator import ResumeFeedbackGenerator
 from models.job_description import JobDescription
 from models.upload import Upload
+from models.analysis import AnalysisResult
 from routes.auth_utils import token_required
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import joinedload
 
 analyze_bp = Blueprint('analyze', __name__)
 
@@ -23,31 +26,88 @@ def get_analysis_results():
     """
     try:
         current_user = g.current_user
+        current_app.logger.info(f"Fetching analysis results for user {current_user.id}")
         
-        # Get all uploads for the current user
-        uploads = Upload.query.filter_by(user_id=current_user.id).all()
+        try:
+            # Get all analysis results for the current user with eager loading of relationships
+            analyses = (AnalysisResult.query
+                       .options(joinedload(AnalysisResult.upload))
+                       .options(joinedload(AnalysisResult.job_description))
+                       .filter_by(user_id=current_user.id)
+                       .order_by(AnalysisResult.created_at.desc())
+                       .all())
+            current_app.logger.info(f"Found {len(analyses)} analysis results")
+            
+        except SQLAlchemyError as e:
+            current_app.logger.error(f"Database error while fetching analyses: {str(e)}", exc_info=True)
+            return jsonify({"error": "Database error occurred", "details": str(e)}), 500
         
         results = []
-        for upload in uploads:
-            # Get the associated job description if any
-            job = JobDescription.query.filter_by(user_id=current_user.id).first()
+        for analysis in analyses:
+            try:
+                current_app.logger.debug(f"Processing analysis {analysis.id}")
+                
+                # Safely get upload filename
+                upload_filename = "Unknown Resume"
+                try:
+                    if analysis.upload:
+                        upload_filename = analysis.upload.filename
+                except SQLAlchemyError as e:
+                    current_app.logger.warning(f"Error accessing upload for analysis {analysis.id}: {str(e)}")
+                
+                # Safely get job description preview
+                job_preview = "No job description"
+                try:
+                    if analysis.job_description and analysis.job_description.raw_text:
+                        job_preview = analysis.job_description.raw_text[:200] + "..."
+                    elif analysis.job_description_text:
+                        job_preview = analysis.job_description_text[:200] + "..."
+                except SQLAlchemyError as e:
+                    current_app.logger.warning(f"Error accessing job description for analysis {analysis.id}: {str(e)}")
+                
+                # Extract score from analysis_data if not available in score field
+                score = 0.0
+                try:
+                    if analysis.score is not None:
+                        score = float(analysis.score)
+                    elif analysis.analysis_data and 'job_match' in analysis.analysis_data:
+                        score = float(analysis.analysis_data['job_match'].get('overall_score', 0.0))
+                except (ValueError, TypeError, AttributeError) as e:
+                    current_app.logger.warning(f"Error extracting score for analysis {analysis.id}: {str(e)}")
+                
+                # Extract industry from analysis_data if not available in industry field
+                industry = None
+                try:
+                    if analysis.industry:
+                        industry = analysis.industry
+                    elif analysis.analysis_data and 'job_match' in analysis.analysis_data:
+                        industry = analysis.analysis_data['job_match'].get('industry')
+                except AttributeError as e:
+                    current_app.logger.warning(f"Error extracting industry for analysis {analysis.id}: {str(e)}")
+                
+                result = {
+                    "id": str(analysis.id),
+                    "resumeName": upload_filename,
+                    "createdAt": analysis.created_at.isoformat(),
+                    "status": "completed",
+                    "score": score,
+                    "industry": industry,
+                    "jobDescriptionPreview": job_preview
+                }
+                results.append(result)
+                current_app.logger.debug(f"Successfully processed analysis {analysis.id}")
+                
+            except Exception as e:
+                current_app.logger.error(f"Error processing analysis {analysis.id}: {str(e)}", exc_info=True)
+                # Continue processing other results even if one fails
+                continue
             
-            result = {
-                "id": str(upload.id),
-                "resumeName": upload.filename,
-                "createdAt": upload.created_at.isoformat(),
-                "status": "completed",  # Assuming all uploads are processed
-                "score": 0.85,  # Placeholder score - you should calculate this based on your analysis
-                "industry": None,  # Placeholder - you should get this from your analysis
-                "jobDescriptionPreview": job.raw_text[:200] + "..." if job else "No job description"
-            }
-            results.append(result)
-            
+        current_app.logger.info(f"Successfully processed {len(results)} results")
         return jsonify(results)
         
     except Exception as e:
-        logging.error(f"Error fetching analysis results: {str(e)}", exc_info=True)
-        return jsonify({"error": "Failed to fetch analysis results"}), 500
+        current_app.logger.error(f"Error fetching analysis results: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to fetch analysis results", "details": str(e)}), 500
 
 @analyze_bp.route('/analyze', methods=['POST'])
 @token_required
@@ -157,3 +217,144 @@ def analyze_resume():
     except Exception as e:
         logging.error(f"Analysis failed: {str(e)}", exc_info=True)
         return jsonify({"error": "Analysis failed", "details": str(e)}), 500
+
+@analyze_bp.route('/results/<int:result_id>', methods=['GET'])
+@token_required
+def get_analysis_result(result_id):
+    """
+    Get a specific analysis result by ID.
+    Returns the detailed analysis result with all feedback.
+    """
+    try:
+        current_user = g.current_user
+        current_app.logger.info(f"Fetching analysis result {result_id} for user {current_user.id}")
+        
+        try:
+            # Get the specific analysis result for the current user
+            analysis = (AnalysisResult.query
+                       .filter_by(id=result_id, user_id=current_user.id)
+                       .first())
+            
+            if not analysis:
+                return jsonify({"error": "Analysis result not found"}), 404
+                
+        except SQLAlchemyError as e:
+            current_app.logger.error(f"Database error while fetching analysis {result_id}: {str(e)}")
+            return jsonify({"error": "Database error occurred"}), 500
+        
+        try:
+            # Extract score from analysis_data if not available in score field
+            score = analysis.score
+            if score is None and analysis.analysis_data:
+                try:
+                    job_match = analysis.analysis_data.get('job_match', {})
+                    score = float(job_match.get('overall_score', 0.0))
+                except (ValueError, TypeError, AttributeError) as e:
+                    current_app.logger.warning(f"Error extracting score from analysis_data: {str(e)}")
+                    score = 0.0
+            
+            # Extract feedback from analysis_data
+            feedback = analysis.analysis_data.get('feedback', {})
+            
+            result = {
+                "score": float(score) if score is not None else 0.0,
+                "matchingStrengths": feedback.get('strengths', []),
+                "areasForImprovement": feedback.get('improvements', []),
+                "missingRequirements": (
+                    analysis.analysis_data.get('job_match', {})
+                    .get('requirements_match', {})
+                    .get('missing', [])
+                ),
+                "recommendations": feedback.get('recommendations', [])
+            }
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            current_app.logger.error(f"Error processing analysis {result_id}: {str(e)}")
+            return jsonify({"error": "Failed to process analysis result"}), 500
+        
+    except Exception as e:
+        current_app.logger.error(f"Error fetching analysis result: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to fetch analysis result", "details": str(e)}), 500
+
+@analyze_bp.route('/results/latest', methods=['GET'])
+@token_required
+def get_latest_analysis_result():
+    """
+    Get the latest analysis result for the current user.
+    Returns the detailed analysis result with all feedback.
+    """
+    try:
+        current_user = g.current_user
+        current_app.logger.info(f"Fetching latest analysis result for user {current_user.id}")
+        
+        try:
+            # Get the latest analysis result for the current user with eager loading
+            analysis = (AnalysisResult.query
+                       .options(joinedload(AnalysisResult.job_description))
+                       .filter_by(user_id=current_user.id)
+                       .order_by(AnalysisResult.created_at.desc())
+                       .first())
+            
+            if not analysis:
+                current_app.logger.info(f"No analysis results found for user {current_user.id}")
+                return jsonify({"message": "No analysis results found"}), 404
+                
+        except SQLAlchemyError as e:
+            error_msg = str(e)
+            current_app.logger.error(f"Database error while fetching latest analysis: {error_msg}", exc_info=True)
+            # Log additional context that might be helpful
+            current_app.logger.error(f"User ID: {current_user.id}, Query attempted: AnalysisResult latest for user")
+            return jsonify({
+                "error": "Database error occurred",
+                "message": "Unable to fetch analysis results. Please try again later.",
+                "details": error_msg if current_app.debug else None
+            }), 500
+        
+        try:
+            # Extract score from analysis_data if not available in score field
+            score = analysis.score
+            if score is None and analysis.analysis_data:
+                try:
+                    job_match = analysis.analysis_data.get('job_match', {})
+                    score = float(job_match.get('overall_score', 0.0))
+                except (ValueError, TypeError, AttributeError) as e:
+                    current_app.logger.warning(f"Error extracting score from analysis_data: {str(e)}")
+                    score = 0.0
+            
+            # Extract feedback from analysis_data
+            feedback = analysis.analysis_data.get('feedback', {}) if analysis.analysis_data else {}
+            
+            result = {
+                "score": float(score) if score is not None else 0.0,
+                "matchingStrengths": feedback.get('strengths', []),
+                "areasForImprovement": feedback.get('improvements', []),
+                "missingRequirements": (
+                    analysis.analysis_data.get('job_match', {})
+                    .get('requirements_match', {})
+                    .get('missing', []) if analysis.analysis_data else []
+                ),
+                "recommendations": feedback.get('recommendations', [])
+            }
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            error_msg = str(e)
+            current_app.logger.error(f"Error processing latest analysis: {error_msg}", exc_info=True)
+            current_app.logger.error(f"Analysis ID: {analysis.id if analysis else 'None'}")
+            return jsonify({
+                "error": "Failed to process analysis result",
+                "message": "Error processing your analysis results. Please try again later.",
+                "details": error_msg if current_app.debug else None
+            }), 500
+        
+    except Exception as e:
+        error_msg = str(e)
+        current_app.logger.error(f"Error fetching latest analysis result: {error_msg}", exc_info=True)
+        return jsonify({
+            "error": "Failed to fetch analysis result",
+            "message": "An unexpected error occurred. Please try again later.",
+            "details": error_msg if current_app.debug else None
+        }), 500

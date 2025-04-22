@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "react-hot-toast";
 import { useSession } from "next-auth/react";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5001';
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://localhost:5001';
 
 export function UploadFormWithAuth() {
   const [resume, setResume] = useState<File | null>(null);
@@ -124,7 +124,8 @@ export function UploadFormWithAuth() {
       const requestData = {
         job_id: jobId,
         resume_text: resumeText,
-        analysis_data: analysisData
+        analysis_data: analysisData,
+        upload_id: uploadData.upload_id
       };
 
       // Ensure we're sending valid JSON
