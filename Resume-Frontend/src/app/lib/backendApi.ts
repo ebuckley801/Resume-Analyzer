@@ -13,17 +13,17 @@ export async function callBackendApi(
 ) {
   const session = await getServerSession(authOptions);
   
+  if (!session?.user?.backendToken) {
+    throw new Error('No backend token found. Please sign in again.');
+  }
+  
   const apiUrl = process.env.BACKEND_API_URL || 'http://localhost:5001';
   const url = `${apiUrl}/${endpoint}`;
   
   // Default headers
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
-  
-  // Add authorization header if we have a backend token
-  if (session?.user?.backendToken) {
-    headers.set('Authorization', `Bearer ${session.user.backendToken}`);
-  }
+  headers.set('Authorization', `Bearer ${session.user.backendToken}`);
   
   // Combine options with headers
   const fetchOptions: RequestInit = {
@@ -33,14 +33,24 @@ export async function callBackendApi(
   
   const response = await fetch(url, fetchOptions);
   
-  // Handle 401 Unauthorized errors
+  // Handle authentication errors
   if (response.status === 401) {
-    // This could be enhanced to refresh the token if needed
     throw new Error('Authentication failed with the backend API');
   }
   
+  if (response.status === 403) {
+    throw new Error('Insufficient permissions for this operation');
+  }
+  
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.statusText}`);
+    let errorMessage = `API request failed: ${response.statusText}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorMessage;
+    } catch {
+      // If we can't parse the error response, use the default message
+    }
+    throw new Error(errorMessage);
   }
   
   return response.json();
@@ -52,13 +62,7 @@ export async function callBackendApi(
  * @returns Response data as JSON
  */
 export async function getFromBackend<T>(endpoint: string): Promise<T> {
-  const response = await callBackendApi(endpoint, { method: 'GET' });
-  
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.statusText}`);
-  }
-  
-  return response.json();
+  return callBackendApi(endpoint, { method: 'GET' });
 }
 
 /**
@@ -68,16 +72,10 @@ export async function getFromBackend<T>(endpoint: string): Promise<T> {
  * @returns Response data as JSON
  */
 export async function postToBackend<T, R>(endpoint: string, data: T): Promise<R> {
-  const response = await callBackendApi(endpoint, {
+  return callBackendApi(endpoint, {
     method: 'POST',
     body: JSON.stringify(data)
   });
-  
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.statusText}`);
-  }
-  
-  return response.json();
 }
 
 /**
@@ -89,16 +87,16 @@ export async function postToBackend<T, R>(endpoint: string, data: T): Promise<R>
 export async function uploadToBackend<R>(endpoint: string, formData: FormData): Promise<R> {
   const session = await getServerSession(authOptions);
   
+  if (!session?.user?.backendToken) {
+    throw new Error('No backend token found. Please sign in again.');
+  }
+  
   const apiUrl = process.env.BACKEND_API_URL || 'http://localhost:5001';
   const url = `${apiUrl}/${endpoint}`;
   
   // Create headers without Content-Type (browser will set it with boundary)
   const headers = new Headers();
-  
-  // Add authorization header if we have a backend token
-  if (session?.user?.backendToken) {
-    headers.set('Authorization', `Bearer ${session.user.backendToken}`);
-  }
+  headers.set('Authorization', `Bearer ${session.user.backendToken}`);
   
   const response = await fetch(url, {
     method: 'POST',
@@ -106,8 +104,23 @@ export async function uploadToBackend<R>(endpoint: string, formData: FormData): 
     body: formData
   });
   
+  if (response.status === 401) {
+    throw new Error('Authentication failed with the backend API');
+  }
+  
+  if (response.status === 403) {
+    throw new Error('Insufficient permissions for this operation');
+  }
+  
   if (!response.ok) {
-    throw new Error(`API upload failed: ${response.statusText}`);
+    let errorMessage = `API upload failed: ${response.statusText}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorMessage;
+    } catch {
+      // If we can't parse the error response, use the default message
+    }
+    throw new Error(errorMessage);
   }
   
   return response.json();

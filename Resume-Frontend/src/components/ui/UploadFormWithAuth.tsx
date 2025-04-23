@@ -43,6 +43,11 @@ export function UploadFormWithAuth() {
       return;
     }
 
+    if (!session?.user?.backendToken) {
+      toast.error("Authentication error. Please sign in again.");
+      return;
+    }
+
     // Log authentication information
     console.log('Session data:', {
       userId: session.user.id,

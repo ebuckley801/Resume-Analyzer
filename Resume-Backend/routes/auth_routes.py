@@ -17,7 +17,7 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 @auth_bp.route('/login', methods=['POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("10 per minute")  # Increased rate limit
 def login():
     """
     User login endpoint.
@@ -49,6 +49,10 @@ def login():
     if not password_valid:
         return jsonify({"error": "Invalid credentials"}), 401
     
+    # Check if user is active
+    if not user.is_active:
+        return jsonify({"error": "Account is inactive"}), 401
+    
     # Update last login time
     user.last_login = datetime.utcnow()
     db.session.commit()
@@ -66,9 +70,13 @@ def login():
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "is_admin": user.is_admin
+            "is_admin": user.is_admin,
+            "is_active": user.is_active,
+            "created_at": user.created_at.isoformat(),
+            "last_login": user.last_login.isoformat() if user.last_login else None
         }
     })
+
 @auth_bp.route('/register', methods=['POST'])
 @limiter.limit("2 per hour")
 def register():
@@ -105,7 +113,8 @@ def register():
     user = User(
         email=email,
         first_name=first_name,
-        last_name=last_name
+        last_name=last_name,
+        last_login=datetime.utcnow()  # Set last_login on creation
     )
     
     # Make the first user an admin
@@ -118,15 +127,23 @@ def register():
     db.session.add(user)
     db.session.commit()
 
+    # Generate token for the new user
+    token = user.generate_auth_token(
+        expires_in=current_app.config.get('JWT_EXPIRATION', 86400)
+    )
+
     return jsonify({
         "message": "User created successfully",
+        "token": token,
         "user": {
             "id": user.id,
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
             "is_admin": user.is_admin,
-            "is_active": True
+            "is_active": user.is_active,
+            "created_at": user.created_at.isoformat(),
+            "last_login": user.last_login.isoformat() if user.last_login else None
         }
     }), 201
 

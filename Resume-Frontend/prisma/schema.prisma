@@ -37,8 +37,8 @@ model JobDescription {
   contentHash String   @map("content_hash")
   createdAt   DateTime @default(now()) @map("created_at")
   analyses    AnalysisResult[]
-  userId      Int      @map("user_id")
-  user        User     @relation(fields: [userId], references: [id])
+  userId      Int?     @map("user_id")
+  user        User?    @relation(fields: [userId], references: [id])
 
   @@map("job_descriptions")
 }
@@ -57,8 +57,12 @@ model Upload {
 
 model AnalysisResult {
   id          Int      @id @default(autoincrement())
-  jobId       Int      @map("job_id")
+  jobId       Int      @map("job_description_id")
   resumeText  String   @map("resume_text") @db.Text
+  jobDescriptionText String? @map("job_description_text") @db.Text
+  score       Float?
+  industry    String?  @db.VarChar(50)
+  analysisVersion String? @map("analysis_version") @db.VarChar(20)
   analysisData Json    @map("analysis_data")
   createdAt   DateTime @default(now()) @map("created_at")
   userId      Int      @map("user_id")

@@ -6,18 +6,26 @@ declare module "next-auth" {
       id: string
       email: string
       name: string
+      firstName?: string
+      lastName?: string
       isAdmin: boolean
       isActive: boolean
       backendToken: string
+      createdAt?: string
+      lastLogin?: string
     }
   }
 
   interface User {
-    id: number
+    id: string
     email: string
     name: string
+    firstName?: string
+    lastName?: string
     isAdmin: boolean
     isActive: boolean
     backendToken: string
+    createdAt?: string
+    lastLogin?: string
   }
 } 
