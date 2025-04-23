@@ -29,15 +29,15 @@ def register_user(email, password, first_name, last_name):
     if not is_valid:
         return None, message
     
-    # Check if this is the first user - make them admin
-    is_first_user = User.query.count() == 0
+    # Check if this is the first non-test user - make them admin
+    is_first_non_test_user = User.query.filter(User.email != 'test@example.com').count() == 0
     
     # Create new user
     user = User(
         email=email,
         first_name=first_name,
         last_name=last_name,
-        is_admin=is_first_user  # First user becomes admin
+        is_admin=is_first_non_test_user  # First non-test user becomes admin
     )
     user.password_hash = hash_password(password)
     

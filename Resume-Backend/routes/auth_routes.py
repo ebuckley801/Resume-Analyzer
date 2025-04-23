@@ -98,34 +98,12 @@ def register():
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
-    # Check for existing user
-    if User.query.filter_by(email=email).first():
-        return jsonify({"error": "Email already exists"}), 409
+    # Use the security_db register_user function
+    from services.security_db import register_user
+    user, message = register_user(email, password, first_name, last_name)
     
-    # Validate password complexity
-    if not validate_password_complexity(password):
-        return jsonify({
-            "error": "Password does not meet complexity requirements",
-            "password_rules": get_password_rules()
-        }), 400
-
-    # Create and save new user
-    user = User(
-        email=email,
-        first_name=first_name,
-        last_name=last_name,
-        last_login=datetime.utcnow()  # Set last_login on creation
-    )
-    
-    # Make the first user an admin
-    user_count = User.query.count()
-    if user_count == 0:
-        user.is_admin = True
-    
-    user.set_password(password)
-    
-    db.session.add(user)
-    db.session.commit()
+    if not user:
+        return jsonify({"error": message}), 400
 
     # Generate token for the new user
     token = user.generate_auth_token(
@@ -133,7 +111,7 @@ def register():
     )
 
     return jsonify({
-        "message": "User created successfully",
+        "message": message,
         "token": token,
         "user": {
             "id": user.id,
