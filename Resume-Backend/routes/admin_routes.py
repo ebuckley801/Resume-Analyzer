@@ -99,6 +99,28 @@ def toggle_admin_status(user_id):
         "is_admin": user.is_admin
     })
 
+@admin_bp.route('/users/<user_id>', methods=['DELETE'])
+@admin_required
+def delete_user(user_id):
+    """Delete a user (admin only)."""
+    user = User.query.get(user_id)
+    
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+        
+    # Don't allow admins to delete their own account
+    if user.id == g.current_user.id:
+        return jsonify({"error": "Cannot delete your own account"}), 400
+        
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({"message": f"User {user.email} deleted successfully"})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting user: {str(e)}")
+        return jsonify({"error": "Failed to delete user"}), 500
+
 @admin_bp.route('/stats', methods=['GET'])
 @admin_required
 def get_stats():

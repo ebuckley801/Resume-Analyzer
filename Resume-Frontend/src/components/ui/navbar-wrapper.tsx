@@ -3,12 +3,13 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { FileText, BarChart2, User } from "lucide-react";
+import { FileText, BarChart2, User, Shield } from "lucide-react";
 import { ModeToggle } from "@/components/ui/theme-toggle";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 export function NavbarWrapper() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const isAuthPage = pathname?.startsWith("/sign-in") || pathname?.startsWith("/sign-up");
 
   if (isAuthPage) {
@@ -32,6 +33,15 @@ export function NavbarWrapper() {
       icon: User
     }
   ];
+
+  // Add admin link if user is admin
+  if (session?.user?.isAdmin) {
+    navItems.push({
+      title: "Admin",
+      href: "/admin",
+      icon: Shield
+    });
+  }
 
   return (
     <nav className="bg-white shadow-sm dark:shadow-none dark:bg-background dark:border-b dark:border-zinc-700 md:sticky top-0 z-50">

@@ -1,4 +1,3 @@
-import bcrypt from 'bcrypt';
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/lib/authOptions";
@@ -18,26 +17,40 @@ export async function POST(request: Request) {
       return new NextResponse(JSON.stringify({ error: 'Email already in use' }), { status: 400 });
    }
 
-   // Hash the password
-   const hashedPassword = await bcrypt.hash(password, 10);
+   // Send registration request to backend
+   const backendUrl = process.env.BACKEND_API_URL;
+   const backendResponse = await fetch(`${backendUrl}/auth/register`, {
+      method: 'POST',
+      headers: {
+         'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+         email: emailAddress,
+         password: password,
+         first_name: firstName,
+         last_name: lastName,
+      }),
+   });
 
-   // Create the user in the database
+   if (!backendResponse.ok) {
+      const error = await backendResponse.json();
+      return new NextResponse(JSON.stringify({ error: error.message || 'Registration failed' }), { status: backendResponse.status });
+   }
+
+   const backendData = await backendResponse.json();
+
+   // Create the user in the local database with the hashed password from backend
    const user = await prisma.user.create({
       data: {
          firstName,
          lastName,
          email: emailAddress,
-         password: hashedPassword,
-         // access_token: null,
-         // item_id: null,
-         // request_id: null,
-         // institution_id: null,
+         passwordHash: backendData.user.password_hash, // Use the hash from backend
       },
    });
 
    return new NextResponse(JSON.stringify({ message: 'User created successfully', user }), { status: 200 });
 }
-
 
 export async function GET() {
    const session = await getServerSession(authOptions);
@@ -45,11 +58,9 @@ export async function GET() {
       return new NextResponse(JSON.stringify({ error: 'No session found' }), { status: 400 });
    }
 
-   const data = await prisma.user.findMany(
-   );
+   const data = await prisma.user.findMany();
    console.log(data)
    return NextResponse.json(data);
-
 }
 
 // update user info
@@ -63,17 +74,36 @@ export async function PUT(request: Request) {
    const body = await request.json();
    const { firstName, lastName, emailAddress, password } = body;
 
-   // Hash the password
-   const hashedPassword = await bcrypt.hash(password, 10);
+   // Send password update request to backend
+   const backendUrl = process.env.BACKEND_API_URL;
+   const backendResponse = await fetch(`${backendUrl}/auth/update`, {
+      method: 'PUT',
+      headers: {
+         'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+         email: emailAddress,
+         password: password,
+         first_name: firstName,
+         last_name: lastName,
+      }),
+   });
 
-   // Update the user in the database
+   if (!backendResponse.ok) {
+      const error = await backendResponse.json();
+      return new NextResponse(JSON.stringify({ error: error.message || 'Update failed' }), { status: backendResponse.status });
+   }
+
+   const backendData = await backendResponse.json();
+
+   // Update the user in the local database with the new hashed password from backend
    const updateUser = await prisma.user.update({
       where: { email: user?.email },
       data: {
          firstName,
          lastName,
          email: emailAddress,
-         password: hashedPassword,
+         passwordHash: backendData.user.password_hash, // Use the hash from backend
       },
    });
 

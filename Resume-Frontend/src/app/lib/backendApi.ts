@@ -39,7 +39,11 @@ export async function callBackendApi(
     throw new Error('Authentication failed with the backend API');
   }
   
-  return response;
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.statusText}`);
+  }
+  
+  return response.json();
 }
 
 /**

@@ -16,7 +16,7 @@ class AnalysisResult(db.Model):
     # Use native PostgreSQL JSONB for better performance and querying capabilities
     analysis_data = db.Column(JSONB, nullable=False)
     resume_text = db.Column(db.Text, nullable=False)
-    job_description_text = db.Column(db.Text, nullable=False)
+    job_description_text = db.Column(db.Text, nullable=True)
     score = db.Column(db.Float, nullable=False)
     industry = db.Column(db.String(50), nullable=True)
     analysis_version = db.Column(db.String(20), nullable=False)
