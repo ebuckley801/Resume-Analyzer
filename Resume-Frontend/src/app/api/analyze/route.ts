@@ -30,12 +30,33 @@ export async function POST(request: Request) {
       );
     }
 
-    const { job_id, resume_text, analysis_data, upload_id } = data;
+    const { jobId, resumeText, analysisData, uploadId } = data;
 
-    if (!job_id || !resume_text || !analysis_data || !upload_id) {
-      console.log('Missing fields:', { job_id, resume_text, analysis_data, upload_id });
+    // Validate each field individually with detailed logging
+    const validationErrors = [];
+    
+    if (!jobId) validationErrors.push('jobId is missing');
+    if (!resumeText) validationErrors.push('resumeText is missing');
+    if (!analysisData) validationErrors.push('analysisData is missing');
+    if (!uploadId) validationErrors.push('uploadId is missing');
+
+    console.log('Field validation:', {
+      hasJobId: !!jobId,
+      jobIdType: typeof jobId,
+      jobIdValue: jobId,
+      hasResumeText: !!resumeText,
+      resumeTextLength: resumeText?.length,
+      hasAnalysisData: !!analysisData,
+      analysisDataType: typeof analysisData,
+      hasUploadId: !!uploadId,
+      uploadIdType: typeof uploadId,
+      uploadIdValue: uploadId
+    });
+
+    if (validationErrors.length > 0) {
+      console.log('Validation errors:', validationErrors);
       return NextResponse.json(
-        { error: 'Missing required fields: job_id, resume_text, analysis_data, and upload_id are required' },
+        { error: `Missing required fields: ${validationErrors.join(', ')}` },
         { status: 400 }
       );
     }
@@ -44,32 +65,48 @@ export async function POST(request: Request) {
       // Store the analysis result in the database
       const analysis = await prisma.analysisResult.create({
         data: {
-          jobId: parseInt(job_id),
-          resumeText: resume_text,
-          analysisData: analysis_data,
-          userId: parseInt(session.user.id),
-          uploadId: parseInt(upload_id)
+          job: {
+            connect: {
+              id: parseInt(jobId)
+            }
+          },
+          resumeText: resumeText,
+          analysisData: analysisData,
+          user: {
+            connect: {
+              id: parseInt(session.user.id)
+            }
+          },
+          upload: {
+            connect: {
+              id: parseInt(uploadId)
+            }
+          }
+        },
+        include: {
+          job: true,
+          upload: true
         }
       });
 
       // Get the upload to get the filename
       const upload = await prisma.upload.findUnique({
-        where: { id: parseInt(upload_id) }
+        where: { id: parseInt(uploadId) }
       });
 
       // Format the response to match what the frontend expects
       const formattedResponse = {
         id: analysis.id.toString(),
-        score: analysis_data.score || 0,
-        industry: analysis_data.industry || null,
+        score: analysisData.score || 0,
+        industry: analysisData.industry || null,
         createdAt: analysis.createdAt.toISOString(),
         resumeName: upload?.filename || 'Uploaded Resume',
-        jobDescriptionPreview: resume_text.substring(0, 100) + '...',
+        jobDescriptionPreview: resumeText.substring(0, 100) + '...',
         status: 'completed',
-        matchingStrengths: analysis_data.matchingStrengths || '',
-        areasForImprovement: analysis_data.areasForImprovement || '',
-        missingRequirements: analysis_data.missingRequirements || '',
-        recommendations: analysis_data.recommendations || ''
+        matchingStrengths: analysisData.matchingStrengths || '',
+        areasForImprovement: analysisData.areasForImprovement || '',
+        missingRequirements: analysisData.missingRequirements || '',
+        recommendations: analysisData.recommendations || ''
       };
 
       // Return a valid JSON response with the formatted data

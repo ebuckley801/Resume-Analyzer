@@ -45,7 +45,7 @@ model JobDescription {
 
 model Upload {
   id            Int       @id @default(autoincrement())
-  filename      String
+  fileName      String    @map("filename")
   processedText String?   @map("processed_text")
   createdAt     DateTime  @default(now()) @map("created_at")
   userId        Int       @map("user_id")
@@ -56,33 +56,33 @@ model Upload {
 }
 
 model AnalysisResult {
-  id          Int      @id @default(autoincrement())
-  jobId       Int      @map("job_description_id")
-  resumeText  String   @map("resume_text") @db.Text
+  id                Int      @id @default(autoincrement())
+  jobId             Int      @map("job_id")
+  resumeText        String   @map("resume_text") @db.Text
   jobDescriptionText String? @map("job_description_text") @db.Text
-  score       Float?
-  industry    String?  @db.VarChar(50)
-  analysisVersion String? @map("analysis_version") @db.VarChar(20)
-  analysisData Json    @map("analysis_data")
-  createdAt   DateTime @default(now()) @map("created_at")
-  userId      Int      @map("user_id")
-  uploadId    Int?     @map("upload_id")
-  user        User     @relation(fields: [userId], references: [id])
-  upload      Upload?  @relation(fields: [uploadId], references: [id])
-  job         JobDescription @relation(fields: [jobId], references: [id])
+  score             Float?
+  industry          String?  @db.VarChar(50)
+  analysisVersion   String?  @map("analysis_version") @db.VarChar(20)
+  analysisData      Json     @map("analysis_data")
+  createdAt         DateTime @default(now()) @map("created_at")
+  userId            Int      @map("user_id")
+  uploadId          Int?     @map("upload_id")
+  user              User     @relation(fields: [userId], references: [id])
+  upload            Upload?  @relation(fields: [uploadId], references: [id])
+  job               JobDescription @relation(fields: [jobId], references: [id])
 
   @@map("analysis_results")
 }
 
 model Analysis {
   id           Int      @id @default(autoincrement())
-  job_id       Int
-  resume_text  String
-  analysis_data Json
-  user_id      String
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  jobId        Int      @map("job_id")
+  resumeText   String   @map("resume_text")
+  analysisData Json     @map("analysis_data")
+  userId       String   @map("user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  @@index([user_id])
-  @@index([job_id])
+  @@index([userId])
+  @@index([jobId])
 } 

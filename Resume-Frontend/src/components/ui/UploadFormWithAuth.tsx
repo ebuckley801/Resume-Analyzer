@@ -77,6 +77,12 @@ export function UploadFormWithAuth() {
 
       const jobData = await jobResponse.json();
       const jobId = jobData.job_id;
+      console.log('Job data received:', {
+        jobData,
+        jobId,
+        jobIdType: typeof jobId,
+        hasJobId: !!jobId
+      });
 
       // 2. Upload resume file
       const resumeFormData = new FormData();
@@ -103,9 +109,14 @@ export function UploadFormWithAuth() {
       const analyzeRequestData = {
         resume_text: resumeText,
         job_id: jobId,
+        job_description: jobDescription,
         sections: uploadData.sections || {}
       };
-      console.log('Sending to backend analyze:', JSON.stringify(analyzeRequestData, null, 2));
+      console.log('Sending to backend analyze:', {
+        ...analyzeRequestData,
+        jobId,
+        jobIdType: typeof jobId
+      });
 
       const analyzeResponse = await fetch(`${BACKEND_URL}/analyze`, {
         method: 'POST',
@@ -123,26 +134,45 @@ export function UploadFormWithAuth() {
       }
 
       const analysisData = await analyzeResponse.json();
-      console.log('Backend analyze response:', analysisData);
+      console.log('Backend analyze response:', {
+        hasData: !!analysisData,
+        keys: Object.keys(analysisData),
+        dataType: typeof analysisData,
+        preview: JSON.stringify(analysisData).substring(0, 100) + '...'
+      });
       
       // 4. Store the analysis result in our database
       const requestData = {
-        job_id: jobId,
-        resume_text: resumeText,
-        analysis_data: analysisData,
-        upload_id: uploadData.upload_id
+        jobId: jobId,
+        resumeText: resumeText,
+        analysisData: analysisData,
+        uploadId: uploadData.upload_id
       };
+
+      // Log all values to ensure they're defined
+      console.log('Values before frontend analyze:', {
+        jobId,
+        resumeTextLength: resumeText?.length,
+        hasAnalysisData: !!analysisData,
+        analysisDataKeys: Object.keys(analysisData || {}),
+        uploadId: uploadData?.upload_id
+      });
 
       // Ensure we're sending valid JSON
       const jsonData = JSON.stringify(requestData);
       console.log('Sending to frontend analyze:', jsonData);
 
-      const response = await fetch("/api/analyze", {
-        method: "POST",
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: jsonData
+        body: JSON.stringify({
+          jobId: jobId,
+          resumeText: resumeText,
+          analysisData: analysisData,
+          uploadId: uploadData.upload_id
+        }),
       });
 
       if (!response.ok) {

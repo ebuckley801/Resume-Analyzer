@@ -45,19 +45,30 @@ async function main() {
   // Create a test analysis result
   await prisma.analysisResult.create({
     data: {
-      jobId: jobDescription.id,
+      job: {
+        connect: {
+          id: jobDescription.id
+        }
+      },
       resumeText: 'This is a test resume',
       analysisData: {
-        score: 85,
-        industry: 'Technology',
-        recommendations: ['Add more details about your experience'],
-        strengths: ['Strong technical skills'],
-        areasForImprovement: ['Could use more project examples'],
-        missingRequirements: ['No mention of specific technologies'],
+        score: 0.8,
+        matchingStrengths: ['Strong problem-solving skills'],
+        areasForImprovement: ['More experience with React'],
+        missingRequirements: ['Bachelor\'s degree'],
+        recommendations: ['Consider getting a degree in Computer Science']
       },
-      userId: user.id,
-      uploadId: upload.id,
-    },
+      user: {
+        connect: {
+          id: user.id
+        }
+      },
+      upload: {
+        connect: {
+          id: upload.id
+        }
+      }
+    }
   });
 
   console.log('Database has been seeded. 🌱');
