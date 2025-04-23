@@ -29,6 +29,11 @@ interface User {
   lastName: string | null;
   isAdmin: boolean;
   isActive: boolean;
+  createdAt: string;
+  lastLogin: string | null;
+  uploads: number;
+  analyses: number;
+  jobDescriptions: number;
 }
 
 export default function AdminPage() {
@@ -61,12 +66,13 @@ export default function AdminPage() {
       }
 
       const data = await response.json();
-      // Ensure isAdmin is a boolean
-      const usersWithBooleanAdmin = data.map((user: any) => ({
+      // Ensure both isAdmin and isActive are booleans
+      const usersWithBooleanFields = data.map((user: any) => ({
         ...user,
-        isAdmin: Boolean(user.isAdmin)
+        isAdmin: Boolean(user.isAdmin),
+        isActive: Boolean(user.isActive)
       }));
-      setUsers(usersWithBooleanAdmin);
+      setUsers(usersWithBooleanFields);
     } catch (error) {
       toast.error('Failed to load users');
       console.error('Error fetching users:', error);
@@ -117,6 +123,45 @@ export default function AdminPage() {
     }
   };
 
+  const toggleUserStatus = async (userId: number, currentStatus: boolean) => {
+    try {
+      // Optimistically update the UI
+      setUsers(prevUsers => prevUsers.map(user => 
+        user.id === userId ? { ...user, isActive: !currentStatus } : user
+      ));
+
+      const response = await fetch(`/api/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.backendToken}`
+        },
+        body: JSON.stringify({ isActive: !currentStatus })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update user status');
+      }
+
+      // Update the UI with the confirmed state
+      setUsers(prevUsers => prevUsers.map(user => 
+        user.id === userId ? { ...user, isActive: data.isActive } : user
+      ));
+      
+      toast.success(`User ${data.isActive ? 'activated' : 'deactivated'}`);
+    } catch (error) {
+      // Revert the UI on error
+      setUsers(prevUsers => prevUsers.map(user => 
+        user.id === userId ? { ...user, isActive: currentStatus } : user
+      ));
+      
+      toast.error(error instanceof Error ? error.message : 'Failed to update user status');
+      console.error('Error updating user status:', error);
+    }
+  };
+
   const deleteUser = async (userId: number) => {
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
@@ -157,7 +202,7 @@ export default function AdminPage() {
 
   return (
     <PageContainer>
-      <div className="w-full max-w-4xl">
+      <div className="w-full max-w-6xl">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold tracking-tight">Admin Dashboard</h1>
           <p className="mt-2 text-muted-foreground">
@@ -173,43 +218,65 @@ export default function AdminPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Admin</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      {user.firstName} {user.lastName}
-                    </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={Boolean(user.isAdmin)}
-                        onCheckedChange={(checked) => toggleAdminStatus(user.id, Boolean(user.isAdmin))}
-                        disabled={user.id === session?.user?.id}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => deleteUser(user.id)}
-                        disabled={user.id === session?.user?.id}
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Admin</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Last Login</TableHead>
+                    <TableHead>Uploads</TableHead>
+                    <TableHead>Analyses</TableHead>
+                    <TableHead>Job Descriptions</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        {user.firstName} {user.lastName}
+                      </TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={Boolean(user.isActive)}
+                          onCheckedChange={(checked) => toggleUserStatus(user.id, Boolean(user.isActive))}
+                          disabled={user.id === session?.user?.id}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={Boolean(user.isAdmin)}
+                          onCheckedChange={(checked) => toggleAdminStatus(user.id, Boolean(user.isAdmin))}
+                          disabled={user.id === session?.user?.id}
+                        />
+                      </TableCell>
+                      <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</TableCell>
+                      <TableCell>{user.uploads}</TableCell>
+                      <TableCell>{user.analyses}</TableCell>
+                      <TableCell>{user.jobDescriptions}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteUser(user.id)}
+                            disabled={user.id === session?.user?.id}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -18,8 +18,19 @@ export async function GET() {
       }
     });
 
-    // The backend returns users in a 'users' property
-    return NextResponse.json(response.users || []);
+    // Transform the response to include counts and formatted dates
+    const users = (response.users || []).map((user: any) => ({
+      ...user,
+      isActive: Boolean(user.is_active),
+      isAdmin: Boolean(user.is_admin),
+      createdAt: user.created_at,
+      lastLogin: user.last_login,
+      uploads: user.uploads?.length || 0,
+      analyses: user.analyses?.length || 0,
+      jobDescriptions: user.jobDescriptions?.length || 0
+    }));
+
+    return NextResponse.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
