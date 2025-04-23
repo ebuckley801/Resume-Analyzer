@@ -1,4 +1,4 @@
-import { Check } from "lucide-react"
+import { Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface PasswordRequirementsProps {
@@ -20,14 +20,11 @@ export function PasswordRequirements({ password, className }: PasswordRequiremen
       <ul className="space-y-1 text-sm">
         {requirements.map(({ regex, label }, index) => (
           <li key={index} className="flex items-center gap-2">
-            <Check
-              className={cn(
-                "h-4 w-4",
-                regex.test(password)
-                  ? "text-green-500"
-                  : "text-gray-400 dark:text-gray-500"
-              )}
-            />
+            {regex.test(password) ? (
+              <Check className="h-4 w-4 text-green-500" />
+            ) : (
+              <X className="h-4 w-4 text-red-500" />
+            )}
             <span className="text-muted-foreground">{label}</span>
           </li>
         ))}
